@@ -480,8 +480,13 @@ Deliverables:
 
 ML prediction
 
+ML prediction (Traditional ML/DL only, No GenAI)
 Feature Importance visualization
 Basic UI
+Project Report (LaTeX format)
+GitHub Repository (Clean code, README, Setup Instructions)
+Hosted Live Demo
+
 
 
 ---
