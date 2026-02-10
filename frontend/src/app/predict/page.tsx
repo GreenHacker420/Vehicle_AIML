@@ -1,19 +1,32 @@
 "use client";
 
 import { useMutation } from "@tanstack/react-query";
-import { motion } from "framer-motion";
-import { AlertTriangle, Gauge, Upload } from "lucide-react";
-import { ChangeEvent, FormEvent, useMemo, useState } from "react";
+import { AlertTriangle, Gauge, UploadCloud } from "lucide-react";
+import { useMemo, useState } from "react";
 
-import { BackgroundGradient } from "@/components/aceternity/background-gradient";
+import AnimatedContent from "@/components/AnimatedContent";
+import FadeContent from "@/components/FadeContent";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Badge } from "@/components/ui/badge";
+import { BackgroundGradient } from "@/components/ui/background-gradient";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileUpload } from "@/components/ui/file-upload";
+import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
+import { Input } from "@/components/ui/input";
+import ShaderBackground from "@/components/ui/shader-background";
 import {
-  AceternityInput,
-  AceternityTextArea,
-} from "@/components/aceternity/input";
-import { HoverBorderButton } from "@/components/aceternity/hover-border-button";
-import { AceternityFeatureTable } from "@/components/aceternity/table";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ManualPredictionInput,
+  PredictionItem,
   PredictionResponse,
   predictFromCsvFile,
   predictFromManualInput,
@@ -35,10 +48,10 @@ const INITIAL_FORM: ManualFormState = {
   usage_patterns: "",
 };
 
-const RISK_STYLES: Record<"LOW" | "MEDIUM" | "HIGH", string> = {
-  LOW: "border-emerald-300/40 bg-emerald-400/15 text-emerald-200",
-  MEDIUM: "border-amber-300/40 bg-amber-400/15 text-amber-200",
-  HIGH: "border-rose-300/40 bg-rose-400/15 text-rose-200",
+const RISK_BADGE_STYLES: Record<"LOW" | "MEDIUM" | "HIGH", string> = {
+  LOW: "border-emerald-300 bg-emerald-50 text-emerald-700",
+  MEDIUM: "border-amber-300 bg-amber-50 text-amber-700",
+  HIGH: "border-rose-300 bg-rose-50 text-rose-700",
 };
 
 export default function PredictPage() {
@@ -48,7 +61,8 @@ export default function PredictPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const manualPrediction = useMutation({
-    mutationFn: (payload: ManualPredictionInput) => predictFromManualInput(payload),
+    mutationFn: (payload: ManualPredictionInput) =>
+      predictFromManualInput(payload),
     onSuccess: (response) => {
       setResult(response);
       setErrorMessage(null);
@@ -75,20 +89,26 @@ export default function PredictPage() {
     if (!result?.feature_importance) {
       return [];
     }
-    return Object.entries(result.feature_importance).map(([feature, importance]) => ({
-      feature,
-      importance,
-    }));
+    return Object.entries(result.feature_importance).map(
+      ([feature, importance]) => ({
+        feature,
+        importance,
+      }),
+    );
+  }, [result]);
+
+  const batchRows: PredictionItem[] = useMemo(() => {
+    if (!result?.predictions) {
+      return [];
+    }
+    return result.predictions.slice(0, 8);
   }, [result]);
 
   const confidenceLabel = result
     ? `${(result.confidence * 100).toFixed(2)}%`
     : "--";
 
-  const handleInputChange = (
-    key: keyof ManualFormState,
-    value: string,
-  ): void => {
+  const handleInputChange = (key: keyof ManualFormState, value: string): void => {
     setManualForm((previous) => ({
       ...previous,
       [key]: value,
@@ -101,8 +121,10 @@ export default function PredictPage() {
     }
   };
 
-  const handleManualSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleManualPredict = () => {
+    if (manualPrediction.isPending || csvPrediction.isPending) {
+      return;
+    }
     resetError();
 
     const payload: ManualPredictionInput = {
@@ -121,15 +143,19 @@ export default function PredictPage() {
       payload.usage_patterns.length === 0;
 
     if (hasInvalidValue) {
-      setErrorMessage("Please complete all manual input fields before predicting.");
+      setErrorMessage(
+        "Please complete all manual input fields before predicting.",
+      );
       return;
     }
 
     manualPrediction.mutate(payload);
   };
 
-  const handleCsvSubmit = (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
+  const handleCsvPredict = () => {
+    if (manualPrediction.isPending || csvPrediction.isPending) {
+      return;
+    }
     resetError();
 
     if (!csvFile) {
@@ -140,260 +166,351 @@ export default function PredictPage() {
     csvPrediction.mutate(csvFile);
   };
 
-  const handleCsvSelect = (event: ChangeEvent<HTMLInputElement>) => {
-    setCsvFile(event.target.files?.[0] ?? null);
-    resetError();
+  const handleCsvChange = (files: File[]) => {
+    const selected = files[0] ?? null;
+    if (!selected) {
+      return;
+    }
+    if (!selected.name.toLowerCase().endsWith(".csv")) {
+      setErrorMessage("Please upload a valid .csv file.");
+      setCsvFile(null);
+      return;
+    }
+    setCsvFile(selected);
+    setErrorMessage(null);
   };
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 px-4 pb-12 pt-10 md:px-8">
-      <motion.section
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35 }}
-        className="space-y-3"
-      >
-        <p className="inline-flex rounded-full border border-cyan-200/30 bg-cyan-400/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-cyan-200">
-          FleetAI Milestone-1
-        </p>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-100 md:text-5xl">
-          Vehicle Maintenance Prediction
-        </h1>
-        <p className="max-w-3xl text-sm text-slate-300 md:text-base">
-          Enter vehicle data manually or upload a CSV to predict maintenance
-          risk level, confidence score, and feature importance.
-        </p>
-      </motion.section>
+    <main className="relative w-screen min-h-screen overflow-x-hidden pb-16">
+      <ShaderBackground />
+      <div className="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(circle_at_12%_18%,rgba(14,165,233,0.2),transparent_30%),radial-gradient(circle_at_88%_80%,rgba(251,146,60,0.16),transparent_36%),linear-gradient(180deg,rgba(15,23,42,0.65),rgba(15,23,42,0.2)_36%,rgba(248,250,252,0.84)_68%,rgba(250,250,255,0.93)_100%)]" />
 
-      <section className="grid gap-5 lg:grid-cols-2">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.05 }}
-        >
-          <BackgroundGradient className="space-y-4">
-            <div className="space-y-1">
-              <h2 className="text-lg font-semibold text-white">Manual Input</h2>
-              <p className="text-sm text-slate-300">
-                Required fields: mileage, engine hours, fault codes, service
-                history, and usage patterns.
-              </p>
-            </div>
-
-            <form className="space-y-3" onSubmit={handleManualSubmit}>
-              <AceternityInput
-                type="number"
-                min={0}
-                placeholder="Mileage (e.g. 64000)"
-                value={manualForm.mileage}
-                onChange={(event) =>
-                  handleInputChange("mileage", event.target.value)
-                }
-                required
+      <div className="relative z-20 mx-auto flex w-full max-w-[1800px] flex-col gap-6 px-4 pt-8 md:px-8 md:pt-10">
+        <AnimatedContent distance={70}>
+          <Card className="border-white/25 bg-white/82 shadow-[0_30px_80px_rgba(15,23,42,0.35)] backdrop-blur-xl">
+            <CardContent className="space-y-4 p-6 text-center md:p-10">
+              <Badge className="mx-auto w-fit border-slate-300 bg-slate-100 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-700">
+                Predict
+              </Badge>
+              <TextGenerateEffect
+                words="Maintenance Risk Intelligence"
+                className="mx-auto max-w-4xl text-center text-3xl font-semibold leading-tight tracking-tight md:text-6xl"
+                duration={0.4}
               />
-              <AceternityInput
-                type="number"
-                min={0}
-                placeholder="Engine Hours (e.g. 1200)"
-                value={manualForm.engine_hours}
-                onChange={(event) =>
-                  handleInputChange("engine_hours", event.target.value)
-                }
-                required
-              />
-              <AceternityTextArea
-                placeholder="Fault Codes (comma-separated, e.g. P0171, P0420)"
-                value={manualForm.fault_codes}
-                onChange={(event) =>
-                  handleInputChange("fault_codes", event.target.value)
-                }
-                required
-              />
-              <AceternityInput
-                placeholder="Service History (e.g. good / average / poor)"
-                value={manualForm.service_history}
-                onChange={(event) =>
-                  handleInputChange("service_history", event.target.value)
-                }
-                required
-              />
-              <AceternityTextArea
-                placeholder="Usage Patterns (e.g. mixed city driving)"
-                value={manualForm.usage_patterns}
-                onChange={(event) =>
-                  handleInputChange("usage_patterns", event.target.value)
-                }
-                required
-              />
-              <HoverBorderButton type="submit" isLoading={manualPrediction.isPending}>
-                Predict from Manual Data
-              </HoverBorderButton>
-            </form>
-          </BackgroundGradient>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.12 }}
-        >
-          <BackgroundGradient className="space-y-4">
-            <div className="space-y-1">
-              <h2 className="text-lg font-semibold text-white">CSV Upload</h2>
-              <p className="text-sm text-slate-300">
-                Upload a CSV with manual fields or model-compatible columns.
-              </p>
-            </div>
-
-            <form className="space-y-3" onSubmit={handleCsvSubmit}>
-              <label className="relative block w-full cursor-pointer rounded-2xl border border-dashed border-cyan-200/40 bg-slate-900/50 p-4 text-sm text-slate-200 transition hover:border-cyan-200/70">
-                <span className="mb-2 inline-flex items-center gap-2 text-cyan-200">
-                  <Upload className="h-4 w-4" />
-                  Select CSV File
-                </span>
-                <input
-                  className="absolute inset-0 cursor-pointer opacity-0"
-                  type="file"
-                  accept=".csv,text/csv"
-                  onChange={handleCsvSelect}
-                />
-                <p className="truncate text-slate-300">
-                  {csvFile ? csvFile.name : "No file selected"}
+              <FadeContent blur duration={900} delay={240}>
+                <p className="mx-auto max-w-3xl text-sm text-slate-700 md:text-lg">
+                  Analyze maintenance risk from manual entries or bulk CSV data
+                  using a single advanced prediction workspace.
                 </p>
-              </label>
+              </FadeContent>
+            </CardContent>
+          </Card>
+        </AnimatedContent>
 
-              <HoverBorderButton type="submit" isLoading={csvPrediction.isPending}>
-                Predict from CSV
-              </HoverBorderButton>
-            </form>
+        <section className="grid w-full gap-6 2xl:grid-cols-2">
+          <AnimatedContent distance={50} delay={0.05}>
+            <BackgroundGradient className="rounded-2xl">
+              <Card className="border-slate-200/90 bg-white/94 shadow-xl shadow-cyan-200/45">
+                <CardHeader>
+                  <CardTitle className="text-slate-900">Manual Input</CardTitle>
+                  <CardDescription className="text-slate-600">
+                    Required fields: mileage, engine hours, fault codes,
+                    service history, usage patterns.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="Mileage (e.g. 64000)"
+                    value={manualForm.mileage}
+                    onChange={(event) =>
+                      handleInputChange("mileage", event.target.value)
+                    }
+                  />
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="Engine Hours (e.g. 1200)"
+                    value={manualForm.engine_hours}
+                    onChange={(event) =>
+                      handleInputChange("engine_hours", event.target.value)
+                    }
+                  />
+                  <Textarea
+                    placeholder="Fault Codes (e.g. P0171, P0420)"
+                    value={manualForm.fault_codes}
+                    onChange={(event) =>
+                      handleInputChange("fault_codes", event.target.value)
+                    }
+                    className="min-h-24 border-slate-200 bg-white text-slate-900"
+                  />
+                  <Input
+                    placeholder="Service History (good / average / poor)"
+                    value={manualForm.service_history}
+                    onChange={(event) =>
+                      handleInputChange("service_history", event.target.value)
+                    }
+                  />
+                  <Textarea
+                    placeholder="Usage Patterns (mixed city driving, heavy commercial, etc.)"
+                    value={manualForm.usage_patterns}
+                    onChange={(event) =>
+                      handleInputChange("usage_patterns", event.target.value)
+                    }
+                    className="min-h-24 border-slate-200 bg-white text-slate-900"
+                  />
+                  <HoverBorderGradient
+                    as="button"
+                    containerClassName="w-full rounded-xl"
+                    className="w-full bg-slate-950 text-sm font-medium text-white"
+                    onClick={handleManualPredict}
+                  >
+                    {manualPrediction.isPending
+                      ? "Predicting..."
+                      : "Predict from manual input"}
+                  </HoverBorderGradient>
+                </CardContent>
+              </Card>
+            </BackgroundGradient>
+          </AnimatedContent>
 
-            <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-3 text-xs text-slate-300">
-              CSV expected columns include:
-              <span className="mt-1 block text-slate-100">
-                mileage, engine_hours, fault_codes, service_history,
-                usage_patterns
-              </span>
-            </div>
-          </BackgroundGradient>
-        </motion.div>
-      </section>
+          <AnimatedContent distance={50} delay={0.1}>
+            <BackgroundGradient className="rounded-2xl">
+              <Card className="border-slate-200/90 bg-white/94 shadow-xl shadow-cyan-200/45">
+                <CardHeader>
+                  <CardTitle className="text-slate-900">CSV Upload</CardTitle>
+                  <CardDescription className="text-slate-600">
+                    Upload a CSV with required columns for batch prediction.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <FileUpload onChange={handleCsvChange} />
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+                    <p className="inline-flex items-center gap-1.5 font-medium">
+                      <UploadCloud className="h-3.5 w-3.5" />
+                      Required CSV columns
+                    </p>
+                    <p className="mt-1">
+                      mileage, engine_hours, fault_codes, service_history,
+                      usage_patterns
+                    </p>
+                    <p className="mt-1 truncate text-slate-600">
+                      Selected: {csvFile?.name ?? "none"}
+                    </p>
+                  </div>
+                  <HoverBorderGradient
+                    as="button"
+                    containerClassName="w-full rounded-xl"
+                    className="w-full bg-slate-950 text-sm font-medium text-white"
+                    onClick={handleCsvPredict}
+                  >
+                    {csvPrediction.isPending
+                      ? "Predicting..."
+                      : "Predict from CSV"}
+                  </HoverBorderGradient>
+                </CardContent>
+              </Card>
+            </BackgroundGradient>
+          </AnimatedContent>
+        </section>
 
-      {isLoading && (
-        <motion.section
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="rounded-2xl border border-cyan-200/30 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100"
-        >
-          Running prediction...
-        </motion.section>
-      )}
+        {isLoading && (
+          <FadeContent blur duration={550}>
+            <Card className="border-cyan-300 bg-cyan-50 text-cyan-800">
+              <CardContent className="py-4 text-sm font-medium">
+                Running prediction...
+              </CardContent>
+            </Card>
+          </FadeContent>
+        )}
 
-      {errorMessage && (
-        <motion.section
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl border border-rose-300/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
-        >
-          <p className="inline-flex items-center gap-2 font-medium">
-            <AlertTriangle className="h-4 w-4" />
-            Prediction failed
-          </p>
-          <p className="mt-1">{errorMessage}</p>
-        </motion.section>
-      )}
-
-      {result && (
-        <motion.section
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="grid gap-5 lg:grid-cols-[1.2fr_1fr]"
-        >
-          <BackgroundGradient className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="space-y-1">
-                <h2 className="text-lg font-semibold text-white">
-                  Prediction Result
-                </h2>
-                <p className="text-sm text-slate-300">
-                  Showing top-level risk summary.
+        {errorMessage && (
+          <FadeContent blur duration={550}>
+            <Card className="border-rose-300 bg-rose-50 text-rose-700">
+              <CardContent className="space-y-1 py-4 text-sm">
+                <p className="inline-flex items-center gap-2 font-semibold">
+                  <AlertTriangle className="h-4 w-4" />
+                  Prediction failed
                 </p>
-              </div>
-              <span
-                className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold tracking-wide ${RISK_STYLES[result.risk_level]}`}
-              >
-                {result.risk_level}
-              </span>
-            </div>
+                <p>{errorMessage}</p>
+              </CardContent>
+            </Card>
+          </FadeContent>
+        )}
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
-                <p className="text-xs uppercase tracking-wide text-slate-400">
-                  Confidence
-                </p>
-                <p className="mt-1 text-2xl font-semibold text-slate-100">
-                  {confidenceLabel}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
-                <p className="inline-flex items-center gap-2 text-xs uppercase tracking-wide text-slate-400">
-                  <Gauge className="h-3.5 w-3.5" />
-                  Records Predicted
-                </p>
-                <p className="mt-1 text-2xl font-semibold text-slate-100">
-                  {result.total_records}
-                </p>
-              </div>
-            </div>
+        {result && (
+          <AnimatedContent distance={44}>
+            <section className="grid gap-6 2xl:grid-cols-[1.35fr_1fr]">
+              <Card className="border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
+                <CardHeader>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <CardTitle className="text-slate-900">
+                      Prediction Result
+                    </CardTitle>
+                    <Badge className={RISK_BADGE_STYLES[result.risk_level]}>
+                      {result.risk_level}
+                    </Badge>
+                  </div>
+                  <CardDescription className="text-slate-600">
+                    Top-level summary from the prediction response.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Card className="border-slate-200 bg-slate-50">
+                      <CardContent className="space-y-1 py-5">
+                        <p className="text-xs uppercase tracking-wider text-slate-600">
+                          Confidence
+                        </p>
+                        <p className="text-2xl font-semibold text-slate-900">
+                          {confidenceLabel}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-slate-200 bg-slate-50">
+                      <CardContent className="space-y-1 py-5">
+                        <p className="inline-flex items-center gap-2 text-xs uppercase tracking-wider text-slate-600">
+                          <Gauge className="h-3.5 w-3.5" />
+                          Records Predicted
+                        </p>
+                        <p className="text-2xl font-semibold text-slate-900">
+                          {result.total_records}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
 
-            {result.predictions && result.predictions.length > 1 && (
-              <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
-                <p className="mb-2 text-xs uppercase tracking-wide text-slate-400">
-                  Batch Preview
-                </p>
-                <div className="overflow-hidden rounded-xl border border-white/10">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-900/80 text-xs uppercase tracking-wide text-slate-400">
-                      <tr>
-                        <th className="px-3 py-2">Row</th>
-                        <th className="px-3 py-2">Risk</th>
-                        <th className="px-3 py-2 text-right">Confidence</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {result.predictions.slice(0, 5).map((item, index) => (
-                        <tr
-                          key={`${item.risk_level}-${index}`}
-                          className="border-t border-white/10"
-                        >
-                          <td className="px-3 py-2 text-slate-300">
-                            #{index + 1}
-                          </td>
-                          <td className="px-3 py-2 text-slate-100">
-                            {item.risk_level}
-                          </td>
-                          <td className="px-3 py-2 text-right text-slate-200">
-                            {(item.confidence * 100).toFixed(2)}%
-                          </td>
-                        </tr>
+                  {batchRows.length > 1 && (
+                    <Card className="border-slate-200 bg-slate-50">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base text-slate-900">
+                          Batch Preview
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="border-slate-200 hover:bg-transparent">
+                              <TableHead className="text-slate-600">Row</TableHead>
+                              <TableHead className="text-slate-600">Risk</TableHead>
+                              <TableHead className="text-right text-slate-600">
+                                Confidence
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {batchRows.map((item, index) => (
+                              <TableRow
+                                key={`${item.risk_level}-${index}`}
+                                className="border-slate-200"
+                              >
+                                <TableCell className="text-slate-700">
+                                  #{index + 1}
+                                </TableCell>
+                                <TableCell className="text-slate-900">
+                                  {item.risk_level}
+                                </TableCell>
+                                <TableCell className="text-right text-slate-700">
+                                  {(item.confidence * 100).toFixed(2)}%
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card className="border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
+                <CardHeader>
+                  <CardTitle className="text-slate-900">
+                    Feature Importance
+                  </CardTitle>
+                  <CardDescription className="text-slate-600">
+                    Highest-weight features returned by the model.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-slate-200 hover:bg-transparent">
+                        <TableHead className="text-slate-600">Feature</TableHead>
+                        <TableHead className="text-right text-slate-600">
+                          Importance
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {featureRows.length === 0 && (
+                        <TableRow className="border-slate-200">
+                          <TableCell className="text-slate-600">
+                            No feature importance returned.
+                          </TableCell>
+                          <TableCell />
+                        </TableRow>
+                      )}
+                      {featureRows.map(({ feature, importance }) => (
+                        <TableRow key={feature} className="border-slate-200">
+                          <TableCell className="capitalize text-slate-900">
+                            {feature.replace(/_/g, " ")}
+                          </TableCell>
+                          <TableCell className="text-right text-slate-700">
+                            {(importance * 100).toFixed(2)}%
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </BackgroundGradient>
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </section>
+          </AnimatedContent>
+        )}
 
-          <BackgroundGradient className="space-y-3">
-            <h3 className="text-lg font-semibold text-white">
-              Feature Importance
-            </h3>
-            <p className="text-sm text-slate-300">
-              Top contributing features returned by the backend model.
-            </p>
-            <AceternityFeatureTable rows={featureRows} />
-          </BackgroundGradient>
-        </motion.section>
-      )}
+        <AnimatedContent distance={34} delay={0.05}>
+          <Card className="border-slate-200 bg-white/95 shadow-sm shadow-slate-200/60">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base text-slate-900">
+                Input and Model Notes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Accordion type="single" collapsible className="w-full">
+                <AccordionItem value="input-spec" className="border-slate-200">
+                  <AccordionTrigger className="text-slate-900 hover:no-underline">
+                    Minimum input schema
+                  </AccordionTrigger>
+                  <AccordionContent className="text-slate-600">
+                    mileage, engine_hours, fault_codes, service_history, and
+                    usage_patterns are required for manual and CSV workflows.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="latency" className="border-slate-200">
+                  <AccordionTrigger className="text-slate-900 hover:no-underline">
+                    Performance
+                  </AccordionTrigger>
+                  <AccordionContent className="text-slate-600">
+                    The backend warms the model once at startup and keeps
+                    per-request prediction latency low.
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="model-info" className="border-slate-200">
+                  <AccordionTrigger className="text-slate-900 hover:no-underline">
+                    Risk thresholds
+                  </AccordionTrigger>
+                  <AccordionContent className="text-slate-600">
+                    LOW &lt; 0.30, MEDIUM 0.30-0.69, HIGH &gt;= 0.70.
+                    Confidence is max(probability, 1 - probability).
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </CardContent>
+          </Card>
+        </AnimatedContent>
+      </div>
     </main>
   );
 }
