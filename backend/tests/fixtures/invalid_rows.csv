@@ -1,0 +1,4 @@
+mileage,engine_hours,fault_codes,service_history,usage_patterns
+,900,P0100;P0110,good,normal mixed
+64000,,P0420,average,city
+-10,800,P0300,poor,heavy commercial
