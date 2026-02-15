@@ -1,22 +1,13 @@
-export type ManualPredictionInput = {
-  mileage: number;
-  engine_hours: number;
-  fault_codes: string;
-  service_history: string;
-  usage_patterns: string;
-};
+import type {
+  ManualPredictionInput,
+  PredictionResponse,
+} from "@/types/prediction";
 
-export type PredictionItem = {
-  risk_level: "LOW" | "MEDIUM" | "HIGH";
-  confidence: number;
-  feature_importance: Record<string, number>;
-};
-
-export type PredictionResponse = PredictionItem & {
-  total_records: number;
-  predictions?: PredictionItem[];
-  metadata?: Record<string, unknown>;
-};
+export type {
+  ManualPredictionInput,
+  PredictionItem,
+  PredictionResponse,
+} from "@/types/prediction";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
@@ -67,4 +58,3 @@ export async function predictFromCsvFile(
 
   return parseResponse<PredictionResponse>(response);
 }
-
