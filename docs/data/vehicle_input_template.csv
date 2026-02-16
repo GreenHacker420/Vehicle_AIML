@@ -1,0 +1,4 @@
+mileage,engine_hours,fault_codes,service_history,usage_patterns
+64000,1200,P0171|P0420,average,mixed city driving
+83000,2100,P0300,poor,heavy commercial city use
+41000,700,P0110,good,highway commute
