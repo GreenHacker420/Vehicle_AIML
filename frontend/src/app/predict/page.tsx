@@ -774,8 +774,18 @@ export default function PredictPage() {
                           <TableCell className="capitalize text-slate-900">
                             {feature.replace(/_/g, " ")}
                           </TableCell>
-                          <TableCell className="text-right text-slate-700">
-                            {(importance * 100).toFixed(2)}%
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200">
+                                <div
+                                  className="h-full bg-cyan-500 transition-all"
+                                  style={{ width: `${importance * 100}%` }}
+                                />
+                              </div>
+                              <span className="text-sm text-slate-700">
+                                {(importance * 100).toFixed(2)}%
+                              </span>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
