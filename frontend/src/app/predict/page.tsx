@@ -12,6 +12,7 @@ import {
   Gauge,
   Info,
   RotateCcw,
+  Sparkles,
   UploadCloud,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -494,6 +495,9 @@ export default function PredictPage() {
                         </button>
                         {result.insight_source && (
                           <Badge className="border-slate-300 bg-slate-100 text-slate-700">
+                            {result.insight_source === "GENAI_LLM" && (
+                              <Sparkles className="mr-1 h-3 w-3" />
+                            )}
                             {result.insight_source === "GENAI_LLM"
                               ? "GenAI Insight"
                               : "Rule Insight"}
