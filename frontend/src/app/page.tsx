@@ -36,8 +36,7 @@ export default function HomePage() {
               <FadeContent blur duration={900} delay={250}>
                 <p className="mx-auto max-w-2xl text-sm leading-7 text-slate-600 md:text-lg">
                   Upload CSV data or enter vehicle details manually to predict
-                  maintenance risk, confidence score, and top contributing
-                  factors.
+                  maintenance risk, confidence, and key contributing factors.
                 </p>
               </FadeContent>
 
