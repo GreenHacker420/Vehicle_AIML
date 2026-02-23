@@ -548,15 +548,15 @@ export default function PredictPage() {
                     </div>
 
                     {result.data_warnings && result.data_warnings.length > 0 && (
-                      <Card className="border-amber-300 bg-amber-50/70">
+                      <Card className="border-amber-300 bg-amber-50/70 shadow-md">
                         <CardContent className="space-y-2 py-4">
                           <p className="inline-flex items-center gap-2 text-sm font-semibold text-amber-900">
                             <AlertTriangle className="h-4 w-4" />
                             Data quality warnings
                           </p>
-                          <ul className="space-y-1 text-sm text-amber-900">
+                          <ul className="space-y-1 text-sm text-amber-800">
                             {result.data_warnings.map((warning) => (
-                              <li key={warning}>- {warning}</li>
+                              <li key={warning}>• {warning}</li>
                             ))}
                           </ul>
                         </CardContent>
