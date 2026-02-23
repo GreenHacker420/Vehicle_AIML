@@ -478,7 +478,7 @@ export default function PredictPage() {
                               : "Rule Insight"}
                           </Badge>
                         )}
-                        <Badge className={RISK_BADGE_STYLES[result.risk_level]}>
+                        <Badge className={RISK_BADGE_STYLES[result.risk_level]} title={`Risk probability: ${probabilityLabel}`}>
                           {result.risk_level}
                         </Badge>
                       </div>
