@@ -516,14 +516,14 @@ export default function PredictPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
+              <Card className="border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
                   <CardHeader>
                     <CardTitle className="text-slate-900">
                       Meaningful Insight
                     </CardTitle>
                     <CardDescription className="text-slate-600">
-                      These are row-specific drivers based on normalized input
-                      values and maintenance heuristics.
+                    Row-specific drivers based on normalized inputs and
+                    maintenance heuristics.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
