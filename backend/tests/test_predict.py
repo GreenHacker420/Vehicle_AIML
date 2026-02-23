@@ -1,14 +1,7 @@
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
 
-from app.main import app
-
-
-client = TestClient(app)
-
-
-def test_predict_json_with_milestone_fields() -> None:
+def test_predict_json_with_milestone_fields(client) -> None:
     response = client.post(
         "/predict",
         json={
@@ -29,7 +22,7 @@ def test_predict_json_with_milestone_fields() -> None:
     assert len(body["feature_importance"]) > 0
 
 
-def test_predict_csv_upload() -> None:
+def test_predict_csv_upload(client) -> None:
     csv_data = "\n".join(
         [
             "mileage,engine_hours,fault_codes,service_history,usage_patterns",
@@ -50,4 +43,5 @@ def test_predict_csv_upload() -> None:
     assert body["risk_level"] in {"LOW", "MEDIUM", "HIGH"}
     assert body["predictions"] is not None
     assert len(body["predictions"]) == 2
+
 
