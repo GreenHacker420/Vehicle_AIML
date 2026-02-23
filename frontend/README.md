@@ -15,6 +15,24 @@ Next.js App Router frontend for vehicle maintenance prediction.
 - Aceternity UI (registry components)
 - 21st.dev (registry components)
 
+## Project Compatibility Check
+
+This frontend already supports:
+
+- `shadcn` project structure (`components.json` present)
+- Tailwind CSS (`src/app/globals.css`)
+- TypeScript (`tsconfig.json`)
+
+## Default Paths
+
+- Components: `src/components/ui`
+- Styles: `src/app/globals.css`
+
+Note:
+
+- The requested path `/components/ui` is equivalent to `src/components/ui` in this project because the app uses a `src/` root.
+- Keeping all reusable UI in `components/ui` (or `src/components/ui`) is important for consistency with shadcn conventions, easier registry installs, and predictable imports.
+
 ## Start
 
 ```bash
@@ -41,4 +59,3 @@ npm run build
 - `src/services/predictionService.ts` - API integration layer
 - `src/providers/query-provider.tsx` - React Query provider
 - `src/components/ui/*` - registry-installed UI components
-
