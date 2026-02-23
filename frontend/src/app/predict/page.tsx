@@ -7,6 +7,7 @@ import {
   ArrowUpRight,
   Check,
   Copy,
+  Download,
   Gauge,
   Info,
   UploadCloud,
@@ -232,6 +233,17 @@ export default function PredictPage() {
     }
   };
 
+  const downloadCSVTemplate = () => {
+    const csv = "mileage,engine_hours,fault_codes,service_history,usage_patterns\n64000,1200,P0171;P0420,average,mixed city driving\n85000,2500,P0300,poor,heavy commercial";
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'vehicle_input_template.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <main className="relative w-screen min-h-screen overflow-x-hidden pb-16">
       <ShaderBackground />
@@ -343,17 +355,28 @@ export default function PredictPage() {
                 <CardContent className="space-y-4">
                   <FileUpload onChange={handleCsvChange} />
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                    <p className="inline-flex items-center gap-1.5 font-medium">
-                      <UploadCloud className="h-3.5 w-3.5" />
-                      Required CSV columns
-                    </p>
-                    <p className="mt-1">
-                      mileage, engine_hours, fault_codes, service_history,
-                      usage_patterns
-                    </p>
-                    <p className="mt-1 truncate text-slate-600">
-                      Selected: {csvFile?.name ?? "none"}
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="inline-flex items-center gap-1.5 font-medium">
+                          <UploadCloud className="h-3.5 w-3.5" />
+                          Required CSV columns
+                        </p>
+                        <p className="mt-1">
+                          mileage, engine_hours, fault_codes, service_history,
+                          usage_patterns
+                        </p>
+                        <p className="mt-1 truncate text-slate-600">
+                          Selected: {csvFile?.name ?? "none"}
+                        </p>
+                      </div>
+                      <button
+                        onClick={downloadCSVTemplate}
+                        className="flex-shrink-0 rounded-md p-2 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors"
+                        title="Download template"
+                      >
+                        <Download className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                   <HoverBorderGradient
                     as="button"
