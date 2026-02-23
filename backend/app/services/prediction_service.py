@@ -12,6 +12,7 @@ import pandas as pd
 from fastapi import HTTPException, UploadFile, status
 from sklearn.pipeline import Pipeline
 
+from app.config import settings
 from app.schemas.prediction import (
     InsightDriver,
     PredictionItem,
