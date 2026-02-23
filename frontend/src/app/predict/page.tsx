@@ -677,7 +677,7 @@ export default function PredictPage() {
                         </TableRow>
                       )}
                       {featureRows.map(({ feature, importance }) => (
-                        <TableRow key={feature} className="border-slate-200">
+                        <TableRow key={feature} className="border-slate-200 transition-colors hover:bg-slate-50">
                           <TableCell className="capitalize text-slate-900">
                             {feature.replace(/_/g, " ")}
                           </TableCell>
