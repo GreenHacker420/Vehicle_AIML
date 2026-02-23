@@ -343,11 +343,12 @@ export default function PredictPage() {
                     className="min-h-24 border-slate-200 bg-white text-slate-900"
                   />
                   <Input
-                    placeholder="Service History (good / average / poor)"
+                    placeholder="Service History (e.g. good, average, poor)"
                     value={manualForm.service_history}
                     onChange={(event) =>
                       handleInputChange("service_history", event.target.value)
                     }
+                    className="focus:ring-2 focus:ring-cyan-500"
                   />
                   <Textarea
                     placeholder="Usage Patterns (mixed city driving, heavy commercial, etc.)"
