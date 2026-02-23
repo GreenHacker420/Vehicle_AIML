@@ -1,4 +1,4 @@
 mileage,engine_hours,fault_codes,service_history,usage_patterns
 42000,900,P0100;P0110,good,normal mixed
 157000,5500,P0420|P0430|P0300,poor,heavy commercial city use
-64000,1200,P0171,P0420,average,mixed city driving
+64000,1200,"P0171,P0420",average,mixed city driving
