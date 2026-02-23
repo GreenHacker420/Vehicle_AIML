@@ -13,7 +13,9 @@ export type {
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
-  (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000");
+  (typeof window !== "undefined" && window.location.hostname !== "localhost"
+    ? "https://vehicle-aiml-backend.vercel.app"
+    : "http://localhost:8000");
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
