@@ -263,6 +263,18 @@ export default function PredictPage() {
     URL.revokeObjectURL(url);
   };
 
+  // Keyboard shortcut: Ctrl+Enter to predict
+  useState(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        handleManualPredict();
+      }
+    };
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  });
+
   return (
     <main className="relative w-screen min-h-screen overflow-x-hidden pb-16">
       <ShaderBackground />
@@ -298,7 +310,7 @@ export default function PredictPage() {
                   <CardTitle className="text-slate-900">Manual Input</CardTitle>
                   <CardDescription className="text-slate-600">
                     Required fields: mileage, engine hours, fault codes,
-                    service history, usage patterns.
+                    service history, usage patterns. Press Ctrl+Enter to predict.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
