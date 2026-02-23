@@ -575,7 +575,7 @@ export default function PredictPage() {
                         {insightRows.map((driver) => (
                           <TableRow
                             key={`${driver.factor}-${driver.observed_value}`}
-                            className="border-slate-200"
+                            className="border-slate-200 transition-colors hover:bg-slate-50"
                           >
                             <TableCell className="space-y-1 text-slate-900">
                               <p className="font-medium">{driver.factor}</p>
