@@ -10,6 +10,7 @@ import {
   Download,
   Gauge,
   Info,
+  RotateCcw,
   UploadCloud,
 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -244,6 +245,11 @@ export default function PredictPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleClearForm = () => {
+    setManualForm(INITIAL_FORM);
+    setErrorMessage(null);
+  };
+
   return (
     <main className="relative w-screen min-h-screen overflow-x-hidden pb-16">
       <ShaderBackground />
@@ -338,6 +344,13 @@ export default function PredictPage() {
                       ? "Predicting..."
                       : "Predict from manual input"}
                   </HoverBorderGradient>
+                  <button
+                    onClick={handleClearForm}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+                  >
+                    <RotateCcw className="mr-2 inline h-4 w-4" />
+                    Clear form
+                  </button>
                 </CardContent>
               </Card>
             </BackgroundGradient>
