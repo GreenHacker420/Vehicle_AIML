@@ -572,9 +572,14 @@ export default function PredictPage() {
                     {batchRows.length > 1 && (
                       <Card className="border-slate-200 bg-slate-50">
                         <CardHeader className="pb-2">
-                          <CardTitle className="text-base text-slate-900">
-                            Batch Preview
-                          </CardTitle>
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-base text-slate-900">
+                              Batch Preview
+                            </CardTitle>
+                            <Badge className="border-slate-300 bg-slate-100 text-slate-700">
+                              {batchRows.length} of {result.total_records}
+                            </Badge>
+                          </div>
                         </CardHeader>
                         <CardContent>
                           <Table>
