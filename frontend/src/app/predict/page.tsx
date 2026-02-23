@@ -96,6 +96,9 @@ export default function PredictPage() {
     onSuccess: (response) => {
       setResult(response);
       setErrorMessage(null);
+      setTimeout(() => {
+        document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     },
     onError: (error) => {
       setErrorMessage(error.message);
@@ -107,6 +110,9 @@ export default function PredictPage() {
     onSuccess: (response) => {
       setResult(response);
       setErrorMessage(null);
+      setTimeout(() => {
+        document.getElementById('results')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
     },
     onError: (error) => {
       setErrorMessage(error.message);
@@ -470,7 +476,7 @@ export default function PredictPage() {
 
         {result && (
           <AnimatedContent distance={44}>
-            <section className="space-y-6">
+            <section className="space-y-6" id="results">
               <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
                 <Card className="border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
                   <CardHeader>
