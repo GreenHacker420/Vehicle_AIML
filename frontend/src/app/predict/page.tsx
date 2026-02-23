@@ -248,7 +248,7 @@ export default function PredictPage() {
           </Card>
         </AnimatedContent>
 
-        <section className="grid w-full gap-6 2xl:grid-cols-2">
+        <section className="grid w-full gap-6 lg:grid-cols-2">
           <AnimatedContent distance={50} delay={0.05}>
             <BackgroundGradient className="rounded-2xl">
               <Card className="border-slate-200/90 bg-white/94 shadow-xl shadow-cyan-200/45">
