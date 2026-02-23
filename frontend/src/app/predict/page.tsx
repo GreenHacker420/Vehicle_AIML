@@ -430,7 +430,7 @@ export default function PredictPage() {
                     as="button"
                     containerClassName="w-full rounded-xl"
                     className={cn(
-                      "w-full bg-slate-950 text-sm font-medium text-white",
+                      "w-full bg-slate-950 text-sm font-medium text-white transition-opacity",
                       isLoading && "opacity-70 cursor-not-allowed",
                     )}
                     onClick={handleCsvPredict}
