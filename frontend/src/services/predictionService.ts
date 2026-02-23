@@ -23,13 +23,29 @@ async function parseResponse<T>(response: Response): Promise<T> {
     try {
       const payload = await response.json();
       if (payload?.detail) {
-        message =
-          typeof payload.detail === "string"
-            ? payload.detail
-            : JSON.stringify(payload.detail);
+        if (Array.isArray(payload.detail)) {
+          const parts = payload.detail.map((item: unknown) => {
+            if (typeof item === "string") {
+              return item;
+            }
+            if (
+              item &&
+              typeof item === "object" &&
+              "msg" in item &&
+              typeof (item as { msg: unknown }).msg === "string"
+            ) {
+              return (item as { msg: string }).msg;
+            }
+            return JSON.stringify(item);
+          });
+          message = parts.join(" | ");
+        } else if (typeof payload.detail === "string") {
+          message = payload.detail;
+        } else {
+          message = JSON.stringify(payload.detail);
+        }
       }
     } catch {
-      // Keep fallback message.
     }
     throw new Error(message);
   }
@@ -39,15 +55,20 @@ async function parseResponse<T>(response: Response): Promise<T> {
 export async function predictFromManualInput(
   payload: ManualPredictionInput,
 ): Promise<PredictionResponse> {
-  const response = await fetch(`${API_BASE_URL}/predict`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
-  });
-
-  return parseResponse<PredictionResponse>(response);
+  try {
+    const response = await fetch(`${API_BASE_URL}/predict`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+    return parseResponse<PredictionResponse>(response);
+  } catch {
+    throw new Error(
+      "Unable to reach prediction API. Check your connection or backend status.",
+    );
+  }
 }
 
 export async function predictFromCsvFile(
@@ -56,10 +77,15 @@ export async function predictFromCsvFile(
   const form = new FormData();
   form.append("file", file);
 
-  const response = await fetch(`${API_BASE_URL}/predict`, {
-    method: "POST",
-    body: form,
-  });
-
-  return parseResponse<PredictionResponse>(response);
+  try {
+    const response = await fetch(`${API_BASE_URL}/predict`, {
+      method: "POST",
+      body: form,
+    });
+    return parseResponse<PredictionResponse>(response);
+  } catch {
+    throw new Error(
+      "Unable to reach prediction API. Check your connection or backend status.",
+    );
+  }
 }
