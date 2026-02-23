@@ -6,11 +6,6 @@ from piccolo.table import Table
 
 
 class PredictionRecord(Table):
-    """
-    Optional persistence model for future milestone extensions.
-    This table isn't required to serve predictions, but keeps the architecture clean.
-    """
-
     risk_level = Varchar(length=16)
     confidence = Numeric(digits=(5, 4))
     feature_importance = JSONB()

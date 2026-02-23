@@ -11,7 +11,6 @@ from app.services.prediction_service import get_prediction_service
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    # Warm model cache at startup so requests don't pay model-load cost.
     get_prediction_service()
     yield
 

@@ -9,12 +9,6 @@ RiskLevel = Literal["LOW", "MEDIUM", "HIGH"]
 
 
 class VehicleInput(BaseModel):
-    """
-    Flexible input schema:
-    - Supports Milestone-1 required fields.
-    - Also supports optional model-native fields for higher fidelity.
-    """
-
     model_config = ConfigDict(extra="ignore")
 
     mileage: float | None = Field(default=None, ge=0)

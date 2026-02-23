@@ -1,2 +1,1 @@
-"""Database models (Piccolo ORM)."""
 

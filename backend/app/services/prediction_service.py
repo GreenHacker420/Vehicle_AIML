@@ -16,10 +16,6 @@ from app.schemas.prediction import PredictionItem, PredictionResponse, VehicleIn
 
 
 class PredictionService:
-    """
-    Loads the trained sklearn pipeline once and serves JSON / CSV predictions.
-    """
-
     MODEL_FILE = Path(__file__).resolve().parents[3] / "model" / "vehicle_maintenance_pipeline.pkl"
 
     _REQUIRED_MINIMUM_FIELDS = {
@@ -126,7 +122,7 @@ class PredictionService:
             for probability in probabilities
         ]
 
-        # Summarize with the highest-risk item to keep top-level response contract simple.
+
         summary = max(
             prediction_items,
             key=lambda item: (self._risk_rank(item.risk_level), item.confidence),
@@ -155,7 +151,6 @@ class PredictionService:
 
     @staticmethod
     def _confidence(probability: float) -> float:
-        # Confidence = max class probability.
         return max(probability, 1.0 - probability)
 
     def _build_model_row(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -274,7 +269,6 @@ class PredictionService:
             "Days_Until_Warranty": days_until_warranty,
         }
 
-        # Ensure compatibility with trained pipeline order and strict column set.
         return {column: row[column] for column in self.required_columns}
 
     @staticmethod
@@ -446,7 +440,6 @@ class PredictionService:
         for key, value in payload.items():
             normalized[self._normalize_key(str(key))] = value
 
-        # Keep compatibility with pydantic validation if caller passes strongly typed object.
         validated = VehicleInput(**normalized).model_dump()
         return {
             k: v

@@ -16,12 +16,6 @@ async def predict(
     file: UploadFile | None = File(default=None),
     service: PredictionService = Depends(get_prediction_service),
 ) -> PredictionResponse:
-    """
-    Predict maintenance risk from:
-    - JSON body (single item, list, or wrapped payload)
-    - Multipart CSV file upload (`file` field)
-    """
-
     if file is not None:
         rows = await service.parse_csv_upload(file)
         return service.predict_many(rows)
