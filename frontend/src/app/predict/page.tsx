@@ -443,7 +443,7 @@ export default function PredictPage() {
         {result && (
           <AnimatedContent distance={44}>
             <section className="space-y-6">
-              <div className="grid gap-6 2xl:grid-cols-[1.2fr_1fr]">
+              <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
                 <Card className="border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
                   <CardHeader>
                     <div className="flex flex-wrap items-center justify-between gap-2">
