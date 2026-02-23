@@ -599,7 +599,10 @@ export default function PredictPage() {
                               {batchRows.map((item, index) => (
                                 <TableRow
                                   key={`${item.risk_level}-${index}`}
-                                  className="border-slate-200 transition-colors hover:bg-slate-50"
+                                  className={cn(
+                                    "border-slate-200 transition-colors hover:bg-slate-50",
+                                    index % 2 === 0 ? "bg-white" : "bg-slate-50/50"
+                                  )}
                                 >
                                   <TableCell className="text-slate-700">
                                     #{index + 1}
