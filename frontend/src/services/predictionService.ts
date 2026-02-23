@@ -11,6 +11,9 @@ export type {
   RecommendationItem,
 } from "@/types/prediction";
 
+const NETWORK_ERROR_MESSAGE =
+  "Unable to reach prediction API. Check your connection or backend status.";
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
   (typeof window !== "undefined" && window.location.hostname !== "localhost"
@@ -65,9 +68,7 @@ export async function predictFromManualInput(
     });
     return parseResponse<PredictionResponse>(response);
   } catch {
-    throw new Error(
-      "Unable to reach prediction API. Check your connection or backend status.",
-    );
+    throw new Error(NETWORK_ERROR_MESSAGE);
   }
 }
 
@@ -84,8 +85,6 @@ export async function predictFromCsvFile(
     });
     return parseResponse<PredictionResponse>(response);
   } catch {
-    throw new Error(
-      "Unable to reach prediction API. Check your connection or backend status.",
-    );
+    throw new Error(NETWORK_ERROR_MESSAGE);
   }
 }
