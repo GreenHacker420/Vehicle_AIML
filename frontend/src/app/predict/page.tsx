@@ -739,9 +739,12 @@ export default function PredictPage() {
 
               <Card className="border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
                 <CardHeader>
-                  <CardTitle className="text-slate-900">
-                    Feature Importance (Global)
-                  </CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Gauge className="h-5 w-5 text-slate-700" />
+                    <CardTitle className="text-slate-900">
+                      Feature Importance (Global)
+                    </CardTitle>
+                  </div>
                   <CardDescription className="text-slate-600">
                     Model-level feature weights. These percentages are global
                     model influence, not this row specific local contribution.
