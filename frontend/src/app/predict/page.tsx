@@ -8,6 +8,7 @@ import {
   Check,
   Copy,
   Download,
+  FileJson,
   Gauge,
   Info,
   RotateCcw,
@@ -250,6 +251,18 @@ export default function PredictPage() {
     setErrorMessage(null);
   };
 
+  const exportResultAsJSON = () => {
+    if (!result) return;
+    const json = JSON.stringify(result, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `prediction_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <main className="relative w-screen min-h-screen overflow-x-hidden pb-16">
       <ShaderBackground />
@@ -451,6 +464,13 @@ export default function PredictPage() {
                         Prediction Result
                       </CardTitle>
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={exportResultAsJSON}
+                          className="rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                          title="Export as JSON"
+                        >
+                          <FileJson className="h-4 w-4" />
+                        </button>
                         {result.insight_source && (
                           <Badge className="border-slate-300 bg-slate-100 text-slate-700">
                             {result.insight_source === "GENAI_LLM"
