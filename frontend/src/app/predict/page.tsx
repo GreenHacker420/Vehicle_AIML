@@ -322,6 +322,7 @@ export default function PredictPage() {
                     onChange={(event) =>
                       handleInputChange("mileage", event.target.value)
                     }
+                    className="focus:ring-2 focus:ring-cyan-500"
                   />
                   <Input
                     type="number"
@@ -331,6 +332,7 @@ export default function PredictPage() {
                     onChange={(event) =>
                       handleInputChange("engine_hours", event.target.value)
                     }
+                    className="focus:ring-2 focus:ring-cyan-500"
                   />
                   <Textarea
                     placeholder="Fault Codes (e.g. P0171, P0420)"
