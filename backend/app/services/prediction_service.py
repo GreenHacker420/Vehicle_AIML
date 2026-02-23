@@ -12,12 +12,11 @@ import pandas as pd
 from fastapi import HTTPException, UploadFile, status
 from sklearn.pipeline import Pipeline
 
+from app.config import settings
 from app.schemas.prediction import PredictionItem, PredictionResponse, VehicleInput
 
 
 class PredictionService:
-    MODEL_FILE = Path(__file__).resolve().parents[3] / "model" / "vehicle_maintenance_pipeline.pkl"
-
     _REQUIRED_MINIMUM_FIELDS = {
         "mileage",
         "engine_hours",
@@ -49,7 +48,7 @@ class PredictionService:
     ]
 
     def __init__(self, model_path: Path | None = None) -> None:
-        self.model_path = model_path or self.MODEL_FILE
+        self.model_path = model_path or settings.model_path
         if not self.model_path.exists():
             raise RuntimeError(f"Trained model file not found at: {self.model_path}")
 
