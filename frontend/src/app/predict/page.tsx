@@ -392,7 +392,7 @@ export default function PredictPage() {
 
           <AnimatedContent distance={50} delay={0.1}>
             <BackgroundGradient className="rounded-2xl">
-              <Card className="border-slate-200/90 bg-white/94 shadow-xl shadow-cyan-200/45">
+              <Card className="border-slate-200/90 bg-white/94 shadow-xl shadow-orange-200/30">
                 <CardHeader>
                   <CardTitle className="text-slate-900">CSV Upload</CardTitle>
                   <CardDescription className="text-slate-600">
