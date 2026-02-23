@@ -340,7 +340,7 @@ export default function PredictPage() {
                     onChange={(event) =>
                       handleInputChange("fault_codes", event.target.value)
                     }
-                    className="min-h-24 border-slate-200 bg-white text-slate-900"
+                    className="min-h-24 border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-cyan-500"
                   />
                   <Input
                     placeholder="Service History (e.g. good, average, poor)"
@@ -356,7 +356,7 @@ export default function PredictPage() {
                     onChange={(event) =>
                       handleInputChange("usage_patterns", event.target.value)
                     }
-                    className="min-h-24 border-slate-200 bg-white text-slate-900"
+                    className="min-h-24 border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-cyan-500"
                   />
                   <HoverBorderGradient
                     as="button"
