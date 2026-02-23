@@ -807,7 +807,7 @@ export default function PredictPage() {
             <CardContent>
               <Accordion type="single" collapsible className="w-full">
                 <AccordionItem value="input-spec" className="border-slate-200">
-                  <AccordionTrigger className="text-slate-900 hover:no-underline">
+                  <AccordionTrigger className="text-slate-900 hover:text-cyan-600 hover:no-underline transition-colors">
                     Minimum input schema
                   </AccordionTrigger>
                   <AccordionContent className="text-slate-600">
@@ -816,7 +816,7 @@ export default function PredictPage() {
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="latency" className="border-slate-200">
-                  <AccordionTrigger className="text-slate-900 hover:no-underline">
+                  <AccordionTrigger className="text-slate-900 hover:text-cyan-600 hover:no-underline transition-colors">
                     Performance
                   </AccordionTrigger>
                   <AccordionContent className="text-slate-600">
@@ -825,7 +825,7 @@ export default function PredictPage() {
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="model-info" className="border-slate-200">
-                  <AccordionTrigger className="text-slate-900 hover:no-underline">
+                  <AccordionTrigger className="text-slate-900 hover:text-cyan-600 hover:no-underline transition-colors">
                     Risk thresholds
                   </AccordionTrigger>
                   <AccordionContent className="text-slate-600">
@@ -835,7 +835,7 @@ export default function PredictPage() {
                   </AccordionContent>
                 </AccordionItem>
                 <AccordionItem value="importance-info" className="border-slate-200">
-                  <AccordionTrigger className="text-slate-900 hover:no-underline">
+                  <AccordionTrigger className="text-slate-900 hover:text-cyan-600 hover:no-underline transition-colors">
                     Why feature importance can look confusing
                   </AccordionTrigger>
                   <AccordionContent className="text-slate-600">
