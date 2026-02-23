@@ -11,13 +11,19 @@ from app.config import settings
 from app.errors import generic_error_handler, value_error_handler
 from app.logging_config import setup_logging
 from app.services.prediction_service import get_prediction_service
+import logging
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     log_level = "DEBUG" if settings.debug else "INFO"
     setup_logging(log_level)
-    get_prediction_service()
+    logger = logging.getLogger(__name__)
+    try:
+        get_prediction_service()
+        logger.info("Model loaded successfully")
+    except Exception:
+        logger.exception("Failed to load prediction model during startup")
     yield
 
 

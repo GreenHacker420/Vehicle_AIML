@@ -1,8 +1,5 @@
 {
   "version": 2,
-  "env": {
-    "PYTHONPATH": "backend"
-  },
   "builds": [
     {
       "src": "api/index.py",
@@ -10,7 +7,7 @@
       "config": {
         "maxDuration": 30,
         "memory": 1024,
-        "includeFiles": "backend/**/*.py,model/vehicle_maintenance_pipeline.pkl"
+        "includeFiles": "{backend/**,model/**}"
       }
     }
   ],
