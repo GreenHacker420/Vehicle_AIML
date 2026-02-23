@@ -5,6 +5,8 @@ import {
   AlertTriangle,
   ArrowDownRight,
   ArrowUpRight,
+  Check,
+  Copy,
   Gauge,
   Info,
   UploadCloud,
@@ -83,6 +85,7 @@ export default function PredictPage() {
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [result, setResult] = useState<PredictionResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const manualPrediction = useMutation({
     mutationFn: (payload: ManualPredictionInput) =>
@@ -219,6 +222,14 @@ export default function PredictPage() {
     }
     setCsvFile(selected);
     setErrorMessage(null);
+  };
+
+  const handleCopySummary = () => {
+    if (result?.insight_summary) {
+      navigator.clipboard.writeText(result.insight_summary);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   return (
@@ -416,10 +427,19 @@ export default function PredictPage() {
                         </Badge>
                       </div>
                     </div>
-                    <CardDescription className="text-slate-600">
-                      {result.insight_summary ??
-                        "Top-level summary from the prediction response."}
-                    </CardDescription>
+                    <div className="flex items-start justify-between gap-2">
+                      <CardDescription className="flex-1 text-slate-600">
+                        {result.insight_summary ??
+                          "Top-level summary from the prediction response."}
+                      </CardDescription>
+                      <button
+                        onClick={handleCopySummary}
+                        className="flex-shrink-0 rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                        title="Copy summary"
+                      >
+                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid gap-3 sm:grid-cols-3">
