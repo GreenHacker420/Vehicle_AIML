@@ -845,6 +845,9 @@ export default function PredictPage() {
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
+              <p className="mt-4 text-xs text-slate-500 text-center">
+                FleetAI v1.0 • Milestone 1 • Powered by sklearn ML pipeline
+              </p>
             </CardContent>
           </Card>
         </AnimatedContent>
