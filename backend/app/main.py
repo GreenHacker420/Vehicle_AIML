@@ -9,11 +9,14 @@ from app.api.predict import router as predict_router
 from app.api.vehicles import router as vehicles_router
 from app.config import settings
 from app.errors import generic_error_handler, value_error_handler
+from app.logging_config import setup_logging
 from app.services.prediction_service import get_prediction_service
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
+    log_level = "DEBUG" if settings.debug else "INFO"
+    setup_logging(log_level)
     get_prediction_service()
     yield
 
