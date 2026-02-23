@@ -4,13 +4,16 @@ import type {
 } from "@/types/prediction";
 
 export type {
+  InsightDriver,
   ManualPredictionInput,
   PredictionItem,
   PredictionResponse,
+  RecommendationItem,
 } from "@/types/prediction";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  (typeof window !== "undefined" ? window.location.origin : "http://localhost:8000");
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {

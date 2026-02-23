@@ -17,9 +17,13 @@ def test_predict_json_with_milestone_fields(client) -> None:
     body = response.json()
 
     assert body["risk_level"] in {"LOW", "MEDIUM", "HIGH"}
+    assert 0 <= body["risk_probability"] <= 1
     assert 0 <= body["confidence"] <= 1
     assert isinstance(body["feature_importance"], dict)
     assert len(body["feature_importance"]) > 0
+    assert isinstance(body["insight_summary"], str)
+    assert len(body["insight_drivers"]) > 0
+    assert isinstance(body["recommendations"], list)
 
 
 def test_predict_csv_upload(client) -> None:
@@ -41,7 +45,7 @@ def test_predict_csv_upload(client) -> None:
 
     assert body["total_records"] == 2
     assert body["risk_level"] in {"LOW", "MEDIUM", "HIGH"}
+    assert 0 <= body["risk_probability"] <= 1
     assert body["predictions"] is not None
     assert len(body["predictions"]) == 2
-
-
+    assert all("insight_drivers" in item for item in body["predictions"])

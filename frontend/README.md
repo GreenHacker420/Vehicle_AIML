@@ -11,11 +11,11 @@ Next.js App Router frontend for vehicle maintenance prediction.
 
 ## UI Libraries Used
 
-- React Bits (registry components)
-- Aceternity UI (registry components)
-- 21st.dev (registry components)
+- React Bits
+- Aceternity UI
+- 21st.dev
 
-## Start
+## Run Locally
 
 ```bash
 npm install
@@ -28,17 +28,31 @@ Open:
 - `http://localhost:3000`
 - `http://localhost:3000/predict`
 
-## Commands
+## Predict Page Output
 
-```bash
-npm run lint
-npm run build
+The result screen now shows:
+
+- risk level
+- risk probability
+- confidence
+- row-specific meaningful insight drivers
+- insight source badge (Rule Insight / GenAI Insight)
+- recommendations with priority
+- data quality warnings
+- global feature importance table
+
+## Deploy Frontend To Vercel
+
+Use a separate Vercel project with root directory `frontend/`.
+
+Required env var:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=https://<backend-domain>
 ```
 
-## Main Files
+Deploy:
 
-- `src/app/predict/page.tsx` - prediction UX
-- `src/services/predictionService.ts` - API integration layer
-- `src/providers/query-provider.tsx` - React Query provider
-- `src/components/ui/*` - registry-installed UI components
-
+```bash
+vercel --prod
+```

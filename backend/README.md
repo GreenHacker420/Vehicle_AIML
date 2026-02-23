@@ -32,7 +32,6 @@ Environment variables (prefixed with `FLEET_`):
 ## Tests
 
 ```bash
-source .venv/bin/activate
 PYTHONPATH=backend pytest -q backend/tests
 ```
 

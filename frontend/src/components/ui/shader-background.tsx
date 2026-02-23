@@ -8,19 +8,14 @@ type ShaderBackgroundProps = {
   className?: string;
 };
 
-const ShaderBackground = ({ className }: ShaderBackgroundProps) => {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  // Vertex shader source code
-  const vsSource = `
+const VS_SOURCE = `
     attribute vec4 aVertexPosition;
     void main() {
       gl_Position = aVertexPosition;
     }
   `;
 
-  // Fragment shader source code (color-tuned to a cooler modern palette)
-  const fsSource = `
+const FS_SOURCE = `
     precision highp float;
     uniform vec2 iResolution;
     uniform float iTime;
@@ -115,57 +110,58 @@ const ShaderBackground = ({ className }: ShaderBackgroundProps) => {
     }
   `;
 
-  const loadShader = (
-    gl: WebGLRenderingContext,
-    type: number,
-    source: string,
-  ): WebGLShader | null => {
-    const shader = gl.createShader(type);
-    if (!shader) {
-      return null;
-    }
-    gl.shaderSource(shader, source);
-    gl.compileShader(shader);
+const loadShader = (
+  gl: WebGLRenderingContext,
+  type: number,
+  source: string,
+): WebGLShader | null => {
+  const shader = gl.createShader(type);
+  if (!shader) {
+    return null;
+  }
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
 
-    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-      // eslint-disable-next-line no-console
-      console.error("Shader compile error:", gl.getShaderInfoLog(shader));
-      gl.deleteShader(shader);
-      return null;
-    }
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    console.error("Shader compile error:", gl.getShaderInfoLog(shader));
+    gl.deleteShader(shader);
+    return null;
+  }
 
-    return shader;
-  };
+  return shader;
+};
 
-  const initShaderProgram = (
-    gl: WebGLRenderingContext,
-    vertexSource: string,
-    fragmentSource: string,
-  ): WebGLProgram | null => {
-    const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vertexSource);
-    const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
-    if (!vertexShader || !fragmentShader) {
-      return null;
-    }
+const initShaderProgram = (
+  gl: WebGLRenderingContext,
+  vertexSource: string,
+  fragmentSource: string,
+): WebGLProgram | null => {
+  const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vertexSource);
+  const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fragmentSource);
+  if (!vertexShader || !fragmentShader) {
+    return null;
+  }
 
-    const shaderProgram = gl.createProgram();
-    if (!shaderProgram) {
-      return null;
-    }
+  const shaderProgram = gl.createProgram();
+  if (!shaderProgram) {
+    return null;
+  }
 
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.attachShader(shaderProgram, fragmentShader);
-    gl.linkProgram(shaderProgram);
+  gl.attachShader(shaderProgram, vertexShader);
+  gl.attachShader(shaderProgram, fragmentShader);
+  gl.linkProgram(shaderProgram);
 
-    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-      // eslint-disable-next-line no-console
-      console.error("Shader program link error:", gl.getProgramInfoLog(shaderProgram));
-      gl.deleteProgram(shaderProgram);
-      return null;
-    }
+  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+    console.error("Shader program link error:", gl.getProgramInfoLog(shaderProgram));
+    gl.deleteProgram(shaderProgram);
+    return null;
+  }
 
-    return shaderProgram;
-  };
+  return shaderProgram;
+};
+
+const ShaderBackground = ({ className }: ShaderBackgroundProps) => {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -175,12 +171,11 @@ const ShaderBackground = ({ className }: ShaderBackgroundProps) => {
 
     const gl = canvas.getContext("webgl");
     if (!gl) {
-      // eslint-disable-next-line no-console
       console.warn("WebGL not supported.");
       return;
     }
 
-    const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+    const shaderProgram = initShaderProgram(gl, VS_SOURCE, FS_SOURCE);
     if (!shaderProgram) {
       return;
     }
@@ -261,7 +256,7 @@ const ShaderBackground = ({ className }: ShaderBackgroundProps) => {
       gl.deleteBuffer(positionBuffer);
       gl.deleteProgram(shaderProgram);
     };
-  }, [fsSource, vsSource]);
+  }, []);
 
   return (
     <canvas
@@ -272,4 +267,3 @@ const ShaderBackground = ({ className }: ShaderBackgroundProps) => {
 };
 
 export default ShaderBackground;
-

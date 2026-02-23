@@ -6,6 +6,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 RiskLevel = Literal["LOW", "MEDIUM", "HIGH"]
+InsightDirection = Literal["RISK_UP", "RISK_DOWN", "NEUTRAL"]
+RecommendationPriority = Literal["HIGH", "MEDIUM", "LOW"]
+InsightSource = Literal["RULES", "GENAI_LLM"]
 
 
 class VehicleInput(BaseModel):
@@ -39,12 +42,31 @@ class VehicleInput(BaseModel):
 
 class PredictionItem(BaseModel):
     risk_level: RiskLevel
+    risk_probability: float = Field(ge=0, le=1)
     confidence: float = Field(ge=0, le=1)
     feature_importance: dict[str, float]
+    insight_summary: str | None = None
+    insight_source: InsightSource = "RULES"
+    insight_drivers: list["InsightDriver"] = Field(default_factory=list)
+    recommendations: list["RecommendationItem"] = Field(default_factory=list)
+    data_warnings: list[str] = Field(default_factory=list)
+
+
+class InsightDriver(BaseModel):
+    factor: str
+    observed_value: str
+    direction: InsightDirection
+    impact: float = Field(ge=0, le=1)
+    explanation: str
+
+
+class RecommendationItem(BaseModel):
+    priority: RecommendationPriority
+    action: str
+    rationale: str
 
 
 class PredictionResponse(PredictionItem):
     total_records: int = 1
     predictions: list[PredictionItem] | None = None
     metadata: dict[str, Any] | None = None
-

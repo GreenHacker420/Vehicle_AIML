@@ -16,7 +16,20 @@ def test_predict_json_contract_shape(client) -> None:
     assert response.status_code == 200
     payload = response.json()
 
-    assert {"risk_level", "confidence", "feature_importance"}.issubset(payload)
+    assert set(
+        [
+            "risk_level",
+            "risk_probability",
+            "confidence",
+            "feature_importance",
+            "insight_summary",
+            "insight_source",
+            "insight_drivers",
+            "recommendations",
+            "data_warnings",
+        ]
+    ).issubset(payload)
     assert payload["risk_level"] in {"LOW", "MEDIUM", "HIGH"}
+    assert 0 <= payload["risk_probability"] <= 1
     assert isinstance(payload["feature_importance"], dict)
 

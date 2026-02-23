@@ -12,8 +12,14 @@ import pandas as pd
 from fastapi import HTTPException, UploadFile, status
 from sklearn.pipeline import Pipeline
 
-from app.config import settings
-from app.schemas.prediction import PredictionItem, PredictionResponse, VehicleInput
+from app.schemas.prediction import (
+    InsightDriver,
+    PredictionItem,
+    PredictionResponse,
+    RecommendationItem,
+    VehicleInput,
+)
+from app.services.llm_insight_service import LLMInsightService
 
 
 class PredictionService:
@@ -61,6 +67,7 @@ class PredictionService:
             getattr(self.pipeline, "feature_names_in_", self._MODEL_COLUMNS_FALLBACK)
         )
         self._feature_importance = self._extract_feature_importance()
+        self.llm_insight_service = LLMInsightService()
 
     async def parse_csv_upload(self, file: UploadFile) -> list[dict[str, Any]]:
         if not file.filename:
@@ -93,12 +100,16 @@ class PredictionService:
         inference_frame = pd.DataFrame([row], columns=self.required_columns)
         probability = float(self.pipeline.predict_proba(inference_frame)[0][1])
 
-        item = PredictionItem(
-            risk_level=self._map_risk_level(probability),
-            confidence=round(self._confidence(probability), 4),
-            feature_importance=self._feature_importance,
+        item = self._build_prediction_item(row=row, probability=probability)
+        return PredictionResponse(
+            **item.model_dump(),
+            metadata={
+                "feature_importance_type": "global_model_weight",
+                "insight_method": "rule_based_operational_explanation"
+                if item.insight_source == "RULES"
+                else "genai_llm_plus_rules",
+            },
         )
-        return PredictionResponse(**item.model_dump())
 
     def predict_many(self, payloads: Iterable[dict[str, Any]]) -> PredictionResponse:
         normalized_payloads = [self._normalize_payload(item) for item in payloads]
@@ -113,12 +124,8 @@ class PredictionService:
         probabilities = self.pipeline.predict_proba(frame)[:, 1]
 
         prediction_items = [
-            PredictionItem(
-                risk_level=self._map_risk_level(float(probability)),
-                confidence=round(self._confidence(float(probability)), 4),
-                feature_importance=self._feature_importance,
-            )
-            for probability in probabilities
+            self._build_prediction_item(row=row, probability=float(probability))
+            for row, probability in zip(model_rows, probabilities)
         ]
 
 
@@ -129,11 +136,55 @@ class PredictionService:
 
         return PredictionResponse(
             risk_level=summary.risk_level,
+            risk_probability=summary.risk_probability,
             confidence=summary.confidence,
             feature_importance=summary.feature_importance,
+            insight_summary=summary.insight_summary,
+            insight_drivers=summary.insight_drivers,
+            recommendations=summary.recommendations,
+            data_warnings=summary.data_warnings,
             total_records=len(prediction_items),
             predictions=prediction_items,
-            metadata={"summary_strategy": "highest_risk"},
+            metadata={
+                "summary_strategy": "highest_risk",
+                "feature_importance_type": "global_model_weight",
+                "insight_method": "rule_based_operational_explanation"
+                if summary.insight_source == "RULES"
+                else "genai_llm_plus_rules",
+            },
+        )
+
+    def _build_prediction_item(self, *, row: dict[str, Any], probability: float) -> PredictionItem:
+        risk_level = self._map_risk_level(probability)
+        insight = self._generate_insight_bundle(row=row, probability=probability, risk_level=risk_level)
+        insight_source = "RULES"
+
+        llm_payload = self.llm_insight_service.generate(
+            risk_level=risk_level,
+            risk_probability=probability,
+            rule_summary=insight["summary"],
+            row=row,
+            drivers=[driver.model_dump() for driver in insight["drivers"]],
+        )
+        if llm_payload:
+            insight_source = "GENAI_LLM"
+            insight["summary"] = llm_payload.get("summary", insight["summary"])
+            insight["recommendations"] = self._merge_llm_recommendations(
+                existing=insight["recommendations"],
+                llm_recommendations=llm_payload.get("recommendations", []),
+                risk_level=risk_level,
+            )
+
+        return PredictionItem(
+            risk_level=risk_level,
+            risk_probability=round(probability, 4),
+            confidence=round(self._confidence(probability), 4),
+            feature_importance=self._feature_importance,
+            insight_summary=insight["summary"],
+            insight_source=insight_source,
+            insight_drivers=insight["drivers"],
+            recommendations=insight["recommendations"],
+            data_warnings=insight["warnings"],
         )
 
     @staticmethod
@@ -434,6 +485,442 @@ class PredictionService:
     def _normalize_key(key: str) -> str:
         return re.sub(r"[^a-z0-9]+", "_", key.strip().lower()).strip("_")
 
+    def _generate_insight_bundle(
+        self,
+        *,
+        row: dict[str, Any],
+        probability: float,
+        risk_level: str,
+    ) -> dict[str, Any]:
+        mileage = float(row.get("Mileage", 0.0))
+        issues = float(row.get("Reported_Issues", 0.0))
+        service_score = float(row.get("Service_History", 0.0))
+        accident_history = float(row.get("Accident_History", 0.0))
+        days_since_service = float(row.get("Days_Since_Service", 0.0))
+        engine_hours = float(row.get("Vehicle_Age", 0.0)) * 700.0
+
+        tire_condition = str(row.get("Tire_Condition", "Good"))
+        brake_condition = str(row.get("Brake_Condition", "Good"))
+        battery_status = str(row.get("Battery_Status", "Good"))
+        owner_type = str(row.get("Owner_Type", "Individual"))
+
+        drivers: list[InsightDriver] = []
+
+        drivers.append(
+            self._issue_driver(issues)
+        )
+        drivers.append(
+            self._service_driver(service_score)
+        )
+        drivers.append(
+            self._service_recency_driver(days_since_service)
+        )
+        drivers.append(
+            self._component_driver("Brake condition", brake_condition)
+        )
+        drivers.append(
+            self._component_driver("Tire condition", tire_condition)
+        )
+        drivers.append(
+            self._battery_driver(battery_status)
+        )
+        drivers.append(
+            self._accident_driver(accident_history)
+        )
+        drivers.append(
+            self._mileage_driver(mileage)
+        )
+        drivers.append(
+            self._usage_driver(owner_type)
+        )
+
+        ordered_drivers = sorted(
+            drivers,
+            key=lambda item: (
+                item.impact,
+                1 if item.direction == "RISK_UP" else 0,
+            ),
+            reverse=True,
+        )[:6]
+
+        warnings = self._data_quality_warnings(
+            mileage=mileage,
+            engine_hours=engine_hours,
+            reported_issues=issues,
+        )
+        recommendations = self._recommendations_from_drivers(ordered_drivers, risk_level)
+        summary = self._build_insight_summary(
+            probability=probability,
+            risk_level=risk_level,
+            drivers=ordered_drivers,
+        )
+
+        return {
+            "summary": summary,
+            "drivers": ordered_drivers,
+            "recommendations": recommendations,
+            "warnings": warnings,
+        }
+
+    @staticmethod
+    def _issue_driver(issues: float) -> InsightDriver:
+        if issues >= 5:
+            return InsightDriver(
+                factor="Reported issues",
+                observed_value=f"{issues:.0f} active fault codes",
+                direction="RISK_UP",
+                impact=0.95,
+                explanation="Multiple active fault codes strongly increase near-term maintenance risk.",
+            )
+        if issues >= 2:
+            return InsightDriver(
+                factor="Reported issues",
+                observed_value=f"{issues:.0f} active fault codes",
+                direction="RISK_UP",
+                impact=0.72,
+                explanation="More than one active fault code indicates unresolved system health issues.",
+            )
+        if issues == 1:
+            return InsightDriver(
+                factor="Reported issues",
+                observed_value="1 active fault code",
+                direction="RISK_UP",
+                impact=0.42,
+                explanation="A single active fault code adds moderate risk until it is resolved.",
+            )
+        return InsightDriver(
+            factor="Reported issues",
+            observed_value="No active fault codes",
+            direction="RISK_DOWN",
+            impact=0.45,
+            explanation="No active fault codes is a stabilizing signal for maintenance risk.",
+        )
+
+    @staticmethod
+    def _service_driver(service_score: float) -> InsightDriver:
+        if service_score <= 3:
+            return InsightDriver(
+                factor="Service history",
+                observed_value=f"Score {service_score:.1f}/10",
+                direction="RISK_UP",
+                impact=0.8,
+                explanation="Poor maintenance discipline increases risk of component failure.",
+            )
+        if service_score < 7:
+            return InsightDriver(
+                factor="Service history",
+                observed_value=f"Score {service_score:.1f}/10",
+                direction="NEUTRAL",
+                impact=0.28,
+                explanation="Average service history neither strongly increases nor reduces risk.",
+            )
+        return InsightDriver(
+            factor="Service history",
+            observed_value=f"Score {service_score:.1f}/10",
+            direction="RISK_DOWN",
+            impact=0.72,
+            explanation="Consistent service history lowers expected maintenance risk.",
+        )
+
+    @staticmethod
+    def _service_recency_driver(days_since_service: float) -> InsightDriver:
+        if days_since_service >= 240:
+            return InsightDriver(
+                factor="Service recency",
+                observed_value=f"{days_since_service:.0f} days since last service",
+                direction="RISK_UP",
+                impact=0.78,
+                explanation="Long intervals without service materially increase maintenance risk.",
+            )
+        if days_since_service >= 120:
+            return InsightDriver(
+                factor="Service recency",
+                observed_value=f"{days_since_service:.0f} days since last service",
+                direction="RISK_UP",
+                impact=0.56,
+                explanation="Service interval is extended and may elevate maintenance risk.",
+            )
+        return InsightDriver(
+            factor="Service recency",
+            observed_value=f"{days_since_service:.0f} days since last service",
+            direction="RISK_DOWN",
+            impact=0.44,
+            explanation="Recent servicing is a protective signal for maintenance health.",
+        )
+
+    @staticmethod
+    def _component_driver(factor: str, condition: str) -> InsightDriver:
+        normalized = condition.strip().lower()
+        if normalized in {"worn out", "worn", "poor", "bad"}:
+            return InsightDriver(
+                factor=factor,
+                observed_value=condition,
+                direction="RISK_UP",
+                impact=0.68,
+                explanation=f"{factor} is degraded, increasing mechanical failure risk.",
+            )
+        if normalized in {"new", "excellent"}:
+            return InsightDriver(
+                factor=factor,
+                observed_value=condition,
+                direction="RISK_DOWN",
+                impact=0.46,
+                explanation=f"{factor} is in strong condition and helps reduce near-term risk.",
+            )
+        return InsightDriver(
+            factor=factor,
+            observed_value=condition,
+            direction="NEUTRAL",
+            impact=0.24,
+            explanation=f"{factor} is acceptable but should still be monitored routinely.",
+        )
+
+    @staticmethod
+    def _battery_driver(status: str) -> InsightDriver:
+        normalized = status.strip().lower()
+        if normalized in {"weak", "low", "degraded", "poor"}:
+            return InsightDriver(
+                factor="Battery status",
+                observed_value=status,
+                direction="RISK_UP",
+                impact=0.62,
+                explanation="Weak battery health increases breakdown probability and secondary faults.",
+            )
+        if normalized in {"new", "fresh"}:
+            return InsightDriver(
+                factor="Battery status",
+                observed_value=status,
+                direction="RISK_DOWN",
+                impact=0.4,
+                explanation="Strong battery health reduces electrical-failure risk.",
+            )
+        return InsightDriver(
+            factor="Battery status",
+            observed_value=status,
+            direction="NEUTRAL",
+            impact=0.22,
+            explanation="Battery status is acceptable; regular checks are still advised.",
+        )
+
+    @staticmethod
+    def _accident_driver(accident_history: float) -> InsightDriver:
+        if accident_history >= 2:
+            return InsightDriver(
+                factor="Accident history",
+                observed_value=f"{accident_history:.0f} incidents",
+                direction="RISK_UP",
+                impact=0.74,
+                explanation="Multiple accidents can increase hidden wear and maintenance complexity.",
+            )
+        if accident_history > 0:
+            return InsightDriver(
+                factor="Accident history",
+                observed_value=f"{accident_history:.0f} incidents",
+                direction="RISK_UP",
+                impact=0.48,
+                explanation="Past accidents add moderate uncertainty to component reliability.",
+            )
+        return InsightDriver(
+            factor="Accident history",
+            observed_value="No incidents",
+            direction="RISK_DOWN",
+            impact=0.33,
+            explanation="No accident history is a modestly protective maintenance signal.",
+        )
+
+    @staticmethod
+    def _mileage_driver(mileage: float) -> InsightDriver:
+        if mileage >= 250000:
+            return InsightDriver(
+                factor="Mileage",
+                observed_value=f"{mileage:,.0f} km",
+                direction="RISK_UP",
+                impact=0.64,
+                explanation="Very high mileage increases cumulative wear and long-term failure likelihood.",
+            )
+        if mileage >= 120000:
+            return InsightDriver(
+                factor="Mileage",
+                observed_value=f"{mileage:,.0f} km",
+                direction="RISK_UP",
+                impact=0.46,
+                explanation="Higher mileage adds moderate wear-related maintenance risk.",
+            )
+        return InsightDriver(
+            factor="Mileage",
+            observed_value=f"{mileage:,.0f} km",
+            direction="RISK_DOWN",
+            impact=0.28,
+            explanation="Mileage is within a lower-wear band for typical fleet operation.",
+        )
+
+    @staticmethod
+    def _usage_driver(owner_type: str) -> InsightDriver:
+        if owner_type.strip().lower() == "commercial":
+            return InsightDriver(
+                factor="Usage profile",
+                observed_value="Commercial/heavy-duty",
+                direction="RISK_UP",
+                impact=0.44,
+                explanation="Commercial usage tends to increase duty cycle and component stress.",
+            )
+        return InsightDriver(
+            factor="Usage profile",
+            observed_value="Individual/light-duty",
+            direction="RISK_DOWN",
+            impact=0.3,
+            explanation="Lighter duty cycles typically reduce maintenance burden.",
+        )
+
+    @staticmethod
+    def _data_quality_warnings(
+        *,
+        mileage: float,
+        engine_hours: float,
+        reported_issues: float,
+    ) -> list[str]:
+        warnings: list[str] = []
+        if mileage > 1_500_000:
+            warnings.append(
+                "Mileage is extremely high and likely outside normal training range; treat the prediction as lower reliability."
+            )
+        if engine_hours > 0 and mileage / engine_hours > 2500:
+            warnings.append(
+                "Mileage-to-engine-hours ratio is unusually high; verify telemetry inputs for unit consistency."
+            )
+        if reported_issues >= 15:
+            warnings.append(
+                "Very high number of active fault codes detected; immediate workshop inspection is recommended."
+            )
+        return warnings
+
+    @staticmethod
+    def _recommendations_from_drivers(
+        drivers: list[InsightDriver],
+        risk_level: str,
+    ) -> list[RecommendationItem]:
+        recommendations: list[RecommendationItem] = []
+        for driver in drivers:
+            factor = driver.factor.lower()
+            observed = driver.observed_value.lower()
+            if factor == "reported issues" and driver.direction == "RISK_UP":
+                recommendations.append(
+                    RecommendationItem(
+                        priority="HIGH",
+                        action="Run full diagnostic scan and resolve active fault codes.",
+                        rationale="Active fault codes are one of the strongest maintenance risk drivers.",
+                    )
+                )
+            if factor == "service recency" and driver.direction == "RISK_UP":
+                recommendations.append(
+                    RecommendationItem(
+                        priority="HIGH" if risk_level == "HIGH" else "MEDIUM",
+                        action="Schedule preventive service within 7 days.",
+                        rationale="Extended service intervals increase probability of avoidable failures.",
+                    )
+                )
+            if factor in {"brake condition", "tire condition", "battery status"} and driver.direction == "RISK_UP":
+                recommendations.append(
+                    RecommendationItem(
+                        priority="MEDIUM",
+                        action=f"Inspect and service {factor} immediately.",
+                        rationale="Component health indicators suggest rising failure risk.",
+                    )
+                )
+            if factor == "service history" and driver.direction == "RISK_UP":
+                recommendations.append(
+                    RecommendationItem(
+                        priority="MEDIUM",
+                        action="Move to shorter maintenance intervals and enforce service logs.",
+                        rationale="Irregular service patterns correlate with elevated maintenance incidents.",
+                    )
+                )
+            if factor == "mileage" and "km" in observed and driver.direction == "RISK_UP":
+                recommendations.append(
+                    RecommendationItem(
+                        priority="LOW",
+                        action="Increase preventive inspection frequency for wear-prone components.",
+                        rationale="High cumulative mileage increases wear even if current risk is not critical.",
+                    )
+                )
+
+        if not recommendations:
+            recommendations.append(
+                RecommendationItem(
+                    priority="LOW",
+                    action="Maintain current service schedule and continue monitoring fault codes.",
+                    rationale="Current indicators do not show immediate high-risk maintenance pressure.",
+                )
+            )
+
+        deduped: list[RecommendationItem] = []
+        seen: set[str] = set()
+        for item in recommendations:
+            key = item.action
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(item)
+        return deduped[:5]
+
+    @staticmethod
+    def _merge_llm_recommendations(
+        *,
+        existing: list[RecommendationItem],
+        llm_recommendations: list[dict[str, str]],
+        risk_level: str,
+    ) -> list[RecommendationItem]:
+        merged = list(existing)
+        default_priority = "HIGH" if risk_level == "HIGH" else "MEDIUM"
+        if risk_level == "LOW":
+            default_priority = "LOW"
+
+        for llm_item in llm_recommendations:
+            action = llm_item.get("action", "").strip()
+            rationale = llm_item.get("rationale", "").strip()
+            if not action or not rationale:
+                continue
+            merged.insert(
+                0,
+                RecommendationItem(
+                    priority=default_priority,
+                    action=action,
+                    rationale=rationale,
+                ),
+            )
+
+        deduped: list[RecommendationItem] = []
+        seen: set[str] = set()
+        for item in merged:
+            key = item.action.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(item)
+        return deduped[:5]
+
+    @staticmethod
+    def _build_insight_summary(
+        *,
+        probability: float,
+        risk_level: str,
+        drivers: list[InsightDriver],
+    ) -> str:
+        top_risk = [driver.factor for driver in drivers if driver.direction == "RISK_UP"][:2]
+        top_protective = [driver.factor for driver in drivers if driver.direction == "RISK_DOWN"][:2]
+
+        risk_text = f"Estimated failure-risk probability is {probability * 100:.2f}% ({risk_level})."
+        if top_risk and top_protective:
+            return (
+                f"{risk_text} Main upward drivers: {', '.join(top_risk)}. "
+                f"Main stabilizers: {', '.join(top_protective)}."
+            )
+        if top_risk:
+            return f"{risk_text} Main upward drivers: {', '.join(top_risk)}."
+        if top_protective:
+            return f"{risk_text} Main stabilizers: {', '.join(top_protective)}."
+        return risk_text
+
     def _normalize_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
         normalized: dict[str, Any] = {}
         for key, value in payload.items():
@@ -530,4 +1017,3 @@ class PredictionService:
 @lru_cache(maxsize=1)
 def get_prediction_service() -> PredictionService:
     return PredictionService()
-
