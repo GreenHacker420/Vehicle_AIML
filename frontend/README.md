@@ -11,29 +11,11 @@ Next.js App Router frontend for vehicle maintenance prediction.
 
 ## UI Libraries Used
 
-- React Bits (registry components)
-- Aceternity UI (registry components)
-- 21st.dev (registry components)
+- React Bits
+- Aceternity UI
+- 21st.dev
 
-## Project Compatibility Check
-
-This frontend already supports:
-
-- `shadcn` project structure (`components.json` present)
-- Tailwind CSS (`src/app/globals.css`)
-- TypeScript (`tsconfig.json`)
-
-## Default Paths
-
-- Components: `src/components/ui`
-- Styles: `src/app/globals.css`
-
-Note:
-
-- The requested path `/components/ui` is equivalent to `src/components/ui` in this project because the app uses a `src/` root.
-- Keeping all reusable UI in `components/ui` (or `src/components/ui`) is important for consistency with shadcn conventions, easier registry installs, and predictable imports.
-
-## Start
+## Run Locally
 
 ```bash
 npm install
@@ -46,16 +28,31 @@ Open:
 - `http://localhost:3000`
 - `http://localhost:3000/predict`
 
-## Commands
+## Predict Page Output
 
-```bash
-npm run lint
-npm run build
+The result screen now shows:
+
+- risk level
+- risk probability
+- confidence
+- row-specific meaningful insight drivers
+- insight source badge (Rule Insight / GenAI Insight)
+- recommendations with priority
+- data quality warnings
+- global feature importance table
+
+## Deploy Frontend To Vercel
+
+Use a separate Vercel project with root directory `frontend/`.
+
+Required env var:
+
+```text
+NEXT_PUBLIC_API_BASE_URL=https://<backend-domain>
 ```
 
-## Main Files
+Deploy:
 
-- `src/app/predict/page.tsx` - prediction UX
-- `src/services/predictionService.ts` - API integration layer
-- `src/providers/query-provider.tsx` - React Query provider
-- `src/components/ui/*` - registry-installed UI components
+```bash
+vercel --prod
+```
