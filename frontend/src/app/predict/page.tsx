@@ -686,10 +686,11 @@ export default function PredictPage() {
                           </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
-                          {recommendationRows.map((recommendation) => (
+                          {recommendationRows.map((recommendation, idx) => (
                             <div
                               key={recommendation.action}
-                              className="rounded-lg border border-slate-200 bg-white p-3"
+                              className="rounded-lg border border-slate-200 bg-white p-3 transition-all hover:shadow-md"
+                              style={{ animationDelay: `${idx * 50}ms` }}
                             >
                               <div className="flex items-start justify-between gap-2">
                                 <p className="text-sm font-medium text-slate-900">
