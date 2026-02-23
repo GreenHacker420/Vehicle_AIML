@@ -455,13 +455,13 @@ export default function PredictPage() {
 
         {errorMessage && (
           <FadeContent blur duration={550}>
-            <Card className="border-rose-300 bg-rose-50 text-rose-700">
+            <Card className="border-rose-300 bg-rose-50 text-rose-700 shadow-lg">
               <CardContent className="space-y-1 py-4 text-sm">
                 <p className="inline-flex items-center gap-2 font-semibold">
                   <AlertTriangle className="h-4 w-4" />
                   Prediction failed
                 </p>
-                <p>{errorMessage}</p>
+                <p className="text-rose-600">{errorMessage}</p>
               </CardContent>
             </Card>
           </FadeContent>
