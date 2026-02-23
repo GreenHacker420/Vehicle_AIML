@@ -367,8 +367,13 @@ export default function PredictPage() {
         {isLoading && (
           <FadeContent blur duration={550}>
             <Card className="border-cyan-300 bg-cyan-50 text-cyan-800">
-              <CardContent className="py-4 text-sm font-medium">
-                Running prediction...
+              <CardContent className="space-y-4 py-6">
+                <p className="text-sm font-medium">Running prediction...</p>
+                <div className="space-y-3">
+                  <div className="h-4 w-3/4 animate-pulse rounded bg-cyan-200" />
+                  <div className="h-4 w-1/2 animate-pulse rounded bg-cyan-200" />
+                  <div className="h-4 w-5/6 animate-pulse rounded bg-cyan-200" />
+                </div>
               </CardContent>
             </Card>
           </FadeContent>
