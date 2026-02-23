@@ -15,7 +15,7 @@ import {
   Sparkles,
   UploadCloud,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 
 import AnimatedContent from "@/components/AnimatedContent";
 import FadeContent from "@/components/FadeContent";
@@ -271,7 +271,7 @@ export default function PredictPage() {
   };
 
   // Keyboard shortcut: Ctrl+Enter to predict
-  useState(() => {
+  useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
