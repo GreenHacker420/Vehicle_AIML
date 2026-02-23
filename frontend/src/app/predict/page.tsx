@@ -499,7 +499,7 @@ export default function PredictPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid gap-3 sm:grid-cols-3">
-                      <Card className="border-slate-200 bg-slate-50">
+                      <Card className="border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
                         <CardContent className="space-y-1 py-5">
                           <p className="text-xs uppercase tracking-wider text-slate-600">
                             Risk Probability
@@ -509,7 +509,7 @@ export default function PredictPage() {
                           </p>
                         </CardContent>
                       </Card>
-                      <Card className="border-slate-200 bg-slate-50">
+                      <Card className="border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
                         <CardContent className="space-y-1 py-5">
                           <p className="text-xs uppercase tracking-wider text-slate-600">
                             Confidence
@@ -519,7 +519,7 @@ export default function PredictPage() {
                           </p>
                         </CardContent>
                       </Card>
-                      <Card className="border-slate-200 bg-slate-50">
+                      <Card className="border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
                         <CardContent className="space-y-1 py-5">
                           <p className="inline-flex items-center gap-2 text-xs uppercase tracking-wider text-slate-600">
                             <Gauge className="h-3.5 w-3.5" />
