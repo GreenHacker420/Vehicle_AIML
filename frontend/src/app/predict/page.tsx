@@ -42,6 +42,7 @@ import type {
   PredictionResponse,
   RecommendationItem,
 } from "@/types/prediction";
+import { cn } from "@/lib/utils";
 
 type ManualFormState = {
   mileage: string;
@@ -303,8 +304,12 @@ export default function PredictPage() {
                   <HoverBorderGradient
                     as="button"
                     containerClassName="w-full rounded-xl"
-                    className="w-full bg-slate-950 text-sm font-medium text-white"
+                    className={cn(
+                      "w-full bg-slate-950 text-sm font-medium text-white",
+                      isLoading && "opacity-70 cursor-not-allowed",
+                    )}
                     onClick={handleManualPredict}
+                    aria-disabled={isLoading}
                   >
                     {manualPrediction.isPending
                       ? "Predicting..."
@@ -342,8 +347,12 @@ export default function PredictPage() {
                   <HoverBorderGradient
                     as="button"
                     containerClassName="w-full rounded-xl"
-                    className="w-full bg-slate-950 text-sm font-medium text-white"
+                    className={cn(
+                      "w-full bg-slate-950 text-sm font-medium text-white",
+                      isLoading && "opacity-70 cursor-not-allowed",
+                    )}
                     onClick={handleCsvPredict}
+                    aria-disabled={isLoading}
                   >
                     {csvPrediction.isPending
                       ? "Predicting..."
