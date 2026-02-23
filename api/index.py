@@ -1,19 +1,25 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
 
-# Vercel Python runtime starts from repository root. Add backend directory so
-# existing `from app...` imports continue to work without changing app code.
+# Vercel Python runtime: cwd = repository root.
+# Add backend/ so `from app...` imports work.
 ROOT_DIR = Path(__file__).resolve().parents[1]
 BACKEND_DIR = ROOT_DIR / "backend"
 
-if str(ROOT_DIR) not in sys.path:
-    sys.path.insert(0, str(ROOT_DIR))
+CWD_BACKEND = Path(os.getcwd()) / "backend"
 
-if str(BACKEND_DIR) not in sys.path:
-    sys.path.insert(0, str(BACKEND_DIR))
+for p in [str(ROOT_DIR), str(BACKEND_DIR), str(CWD_BACKEND), os.getcwd()]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
-from app.main import app  # noqa: E402  # pylint: disable=wrong-import-position
+try:
+    from app.main import app  
+except Exception as exc:
+    import traceback
+    traceback.print_exc()
+    raise
 
