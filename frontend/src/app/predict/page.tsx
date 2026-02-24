@@ -1,5 +1,4 @@
 "use client";
-
 import { useMutation } from "@tanstack/react-query";
 import {
   AlertTriangle,
@@ -73,9 +72,9 @@ const RISK_BADGE_STYLES: Record<"LOW" | "MEDIUM" | "HIGH", string> = {
 };
 
 const DRIVER_BADGE_STYLES: Record<"RISK_UP" | "RISK_DOWN" | "NEUTRAL", string> = {
-  RISK_UP: "border-rose-300 bg-rose-50 text-rose-700",
-  RISK_DOWN: "border-emerald-300 bg-emerald-50 text-emerald-700",
-  NEUTRAL: "border-slate-300 bg-slate-100 text-slate-700",
+  RISK_UP: "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-50 w-24 justify-center",
+  RISK_DOWN: "border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-50 w-24 justify-center",
+  NEUTRAL: "border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-100 w-24 justify-center",
 };
 
 const PRIORITY_BADGE_STYLES: Record<"HIGH" | "MEDIUM" | "LOW", string> = {
@@ -90,6 +89,7 @@ export default function PredictPage() {
   const [result, setResult] = useState<PredictionResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"manual" | "csv">("manual");
 
   const manualPrediction = useMutation({
     mutationFn: (payload: ManualPredictionInput) =>
@@ -294,11 +294,9 @@ export default function PredictPage() {
               <Badge className="mx-auto w-fit border-slate-300 bg-slate-100 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-700">
                 Predict
               </Badge>
-              <TextGenerateEffect
-                words="Maintenance Risk Intelligence"
-                className="mx-auto max-w-4xl text-center text-3xl font-semibold leading-tight tracking-tight md:text-6xl"
-                duration={0.4}
-              />
+              <h1 className="mx-auto max-w-4xl text-center text-4xl font-extrabold leading-tight tracking-tight md:text-6xl bg-gradient-to-r from-slate-900 via-cyan-800 to-slate-900 bg-clip-text text-transparent pb-2 drop-shadow-sm hover:scale-[1.01] transition-transform duration-500">
+                Maintenance Risk Intelligence
+              </h1>
               <FadeContent blur duration={900} delay={240}>
                 <p className="mx-auto max-w-3xl text-sm text-slate-700 md:text-lg">
                   Analyze maintenance risk from manual entries or bulk CSV data
@@ -309,137 +307,148 @@ export default function PredictPage() {
           </Card>
         </AnimatedContent>
 
-        <section className="grid w-full gap-4 lg:grid-cols-2 lg:auto-rows-fr">
-          <AnimatedContent distance={50} delay={0.05} className="h-full">
-            <BackgroundGradient className="h-full rounded-2xl">
-              <Card className="flex h-full flex-col border-slate-200/90 bg-white/94 shadow-xl shadow-cyan-200/45">
-                <CardHeader>
-                  <CardTitle className="text-slate-900">Manual Input</CardTitle>
-                  <CardDescription className="text-slate-600">
-                    Required fields: mileage, engine hours, fault codes,
-                    service history, usage patterns. Press Ctrl+Enter to predict.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-1 flex-col justify-between space-y-3">
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Mileage (e.g. 64000)"
-                    value={manualForm.mileage}
-                    onChange={(event) =>
-                      handleInputChange("mileage", event.target.value)
-                    }
-                    className="focus:ring-2 focus:ring-cyan-500"
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="Engine Hours (e.g. 1200)"
-                    value={manualForm.engine_hours}
-                    onChange={(event) =>
-                      handleInputChange("engine_hours", event.target.value)
-                    }
-                    className="focus:ring-2 focus:ring-cyan-500"
-                  />
-                  <Textarea
-                    placeholder="Fault Codes (e.g. P0171, P0420)"
-                    value={manualForm.fault_codes}
-                    onChange={(event) =>
-                      handleInputChange("fault_codes", event.target.value)
-                    }
-                    className="min-h-24 border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-cyan-500"
-                  />
-                  <Input
-                    placeholder="Service History (e.g. good, average, poor)"
-                    value={manualForm.service_history}
-                    onChange={(event) =>
-                      handleInputChange("service_history", event.target.value)
-                    }
-                    className="focus:ring-2 focus:ring-cyan-500"
-                  />
-                  <Textarea
-                    placeholder="Usage Patterns (mixed city driving, heavy commercial, etc.)"
-                    value={manualForm.usage_patterns}
-                    onChange={(event) =>
-                      handleInputChange("usage_patterns", event.target.value)
-                    }
-                    className="min-h-24 border-slate-200 bg-white text-slate-900 focus:ring-2 focus:ring-cyan-500"
-                  />
-                  <HoverBorderGradient
-                    as="button"
-                    containerClassName="w-full rounded-xl"
-                    className={cn(
-                      "w-full bg-slate-950 text-sm font-medium text-white transition-opacity",
-                      isLoading && "opacity-70 cursor-not-allowed",
-                    )}
-                    onClick={handleManualPredict}
-                    aria-disabled={isLoading}
-                  >
-                    {manualPrediction.isPending
-                      ? "Predicting..."
-                      : "Predict from manual input"}
-                  </HoverBorderGradient>
-                  <button
-                    onClick={handleClearForm}
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-                  >
-                    <RotateCcw className="mr-2 inline h-4 w-4" />
-                    Clear form
-                  </button>
-                </CardContent>
-              </Card>
-            </BackgroundGradient>
-          </AnimatedContent>
-
-          <AnimatedContent distance={50} delay={0.1} className="h-full">
-            <BackgroundGradient className="h-full rounded-2xl">
-              <Card className="flex h-full flex-col border-slate-200/90 bg-white/94 shadow-xl shadow-orange-200/30">
-                <CardHeader>
-                  <CardTitle className="text-slate-900">CSV Upload</CardTitle>
-                  <CardDescription className="text-slate-600">
-                    Upload a CSV with required columns for batch prediction.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-1 flex-col justify-between space-y-4">
-                  <FileUpload onChange={handleCsvChange} />
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="inline-flex items-center gap-1.5 font-medium">
-                          <UploadCloud className="h-3.5 w-3.5" />
-                          Required CSV columns
-                        </p>
-                        <p className="mt-1">
-                          mileage, engine_hours, fault_codes, service_history,
-                          usage_patterns
-                        </p>
-                        <p className="mt-1 truncate text-slate-600">
-                          Selected: {csvFile?.name ?? "none"}
-                        </p>
-                      </div>
+        <section className="mx-auto w-full max-w-5xl">
+          <AnimatedContent distance={50} delay={0.05}>
+            <BackgroundGradient className="rounded-3xl">
+              <Card className="flex flex-col border-white/40 bg-white/60 backdrop-blur-lg shadow-2xl overflow-hidden rounded-3xl">
+                <CardHeader className="border-b border-white/30 pb-4 bg-white/30">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <CardTitle className="text-slate-900 text-xl font-bold tracking-tight">Prediction Engine</CardTitle>
+                      <CardDescription className="text-slate-700">
+                        Select an input method to analyze fleet maintenance risk profiles.
+                      </CardDescription>
+                    </div>
+                    <div className="flex bg-white/50 backdrop-blur-md p-1 rounded-xl w-fit shadow-inner border border-white/40">
                       <button
-                        onClick={downloadCSVTemplate}
-                        className="flex-shrink-0 rounded-md p-2 text-slate-600 hover:bg-slate-200 hover:text-slate-900 transition-colors"
-                        title="Download template"
+                        onClick={() => setActiveTab('manual')}
+                        className={cn("px-5 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm", activeTab === 'manual' ? "bg-white text-cyan-800" : "text-slate-600 hover:text-slate-900 transparent")}
                       >
-                        <Download className="h-4 w-4" />
+                        Manual Entry
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('csv')}
+                        className={cn("px-5 py-2 rounded-lg text-sm font-semibold transition-all shadow-sm", activeTab === 'csv' ? "bg-white text-orange-700" : "text-slate-600 hover:text-slate-900 transparent")}
+                      >
+                        CSV Batch
                       </button>
                     </div>
                   </div>
-                  <HoverBorderGradient
-                    as="button"
-                    containerClassName="w-full rounded-xl"
-                    className={cn(
-                      "w-full bg-slate-950 text-sm font-medium text-white transition-opacity",
-                      isLoading && "opacity-70 cursor-not-allowed",
-                    )}
-                    onClick={handleCsvPredict}
-                    aria-disabled={isLoading}
-                  >
-                    {csvPrediction.isPending
-                      ? "Predicting..."
-                      : "Predict from CSV"}
-                  </HoverBorderGradient>
+                </CardHeader>
+                <CardContent className="p-6">
+                  {activeTab === 'manual' ? (
+                    <div className="flex flex-col gap-4">
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="Mileage (e.g. 64000)"
+                          value={manualForm.mileage}
+                          onChange={(event) =>
+                            handleInputChange("mileage", event.target.value)
+                          }
+                          className="focus:ring-2 focus:ring-cyan-500 bg-white/70"
+                        />
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="Engine Hours (e.g. 1200)"
+                          value={manualForm.engine_hours}
+                          onChange={(event) =>
+                            handleInputChange("engine_hours", event.target.value)
+                          }
+                          className="focus:ring-2 focus:ring-cyan-500 bg-white/70"
+                        />
+                        <Input
+                          placeholder="Service History (good, average, poor)"
+                          value={manualForm.service_history}
+                          onChange={(event) =>
+                            handleInputChange("service_history", event.target.value)
+                          }
+                          className="focus:ring-2 focus:ring-cyan-500 bg-white/70"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                        <Textarea
+                          placeholder="Fault Codes (e.g. P0171, P0420)"
+                          value={manualForm.fault_codes}
+                          onChange={(event) =>
+                            handleInputChange("fault_codes", event.target.value)
+                          }
+                          className="min-h-16 border-slate-200 bg-white/70 text-slate-900 focus:ring-2 focus:ring-cyan-500"
+                        />
+                        <Textarea
+                          placeholder="Usage Patterns (mixed city driving, etc.)"
+                          value={manualForm.usage_patterns}
+                          onChange={(event) =>
+                            handleInputChange("usage_patterns", event.target.value)
+                          }
+                          className="min-h-16 border-slate-200 bg-white/70 text-slate-900 focus:ring-2 focus:ring-cyan-500"
+                        />
+                      </div>
+                      <div className="flex gap-4 pt-2">
+                        <button
+                          className={cn(
+                            "flex-1 w-full rounded-xl bg-slate-900 hover:bg-slate-800 hover:shadow-lg hover:-translate-y-0.5 text-sm font-semibold text-white transition-all duration-300 active:scale-95 py-3",
+                            isLoading && "opacity-70 cursor-not-allowed hover:-translate-y-0 hover:shadow-none active:scale-100",
+                          )}
+                          onClick={handleManualPredict}
+                          disabled={isLoading}
+                        >
+                          {manualPrediction.isPending
+                            ? "Predicting..."
+                            : "Run Predict Engine (Ctrl+Enter)"}
+                        </button>
+                        <button
+                          onClick={handleClearForm}
+                          className="rounded-xl border border-slate-300 bg-white/50 px-6 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-white"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-4">
+                      <FileUpload onChange={handleCsvChange} />
+                      <div className="flex w-full items-center justify-between rounded-xl border border-slate-200/50 bg-white/50 px-4 py-3 text-xs shadow-inner">
+                        <div className="flex items-center gap-3">
+                          <div className="rounded-full bg-orange-100 p-2 text-orange-600">
+                            <UploadCloud className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <p className="font-semibold text-slate-900">Required CSV Schema</p>
+                            <p className="text-slate-600 mt-0.5">mileage, engine_hours, fault_codes, service_history, usage_patterns</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <span className="font-mono text-[10px] bg-slate-100 text-slate-500 px-2 py-1 rounded">
+                            {csvFile?.name ? <span className="text-slate-800 font-medium">1 file attached</span> : "0 files selected"}
+                          </span>
+                          <button
+                            onClick={downloadCSVTemplate}
+                            className="flex-shrink-0 rounded-md bg-white p-2 text-slate-600 shadow-sm border border-slate-200 hover:bg-slate-50 hover:text-slate-900 transition-colors tooltip tooltip-left"
+                            title="Download template"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="pt-2">
+                        <button
+                          className={cn(
+                            "w-full rounded-xl bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 hover:shadow-lg hover:-translate-y-0.5 text-sm font-semibold text-white transition-all duration-300 active:scale-95 py-3",
+                            isLoading && "opacity-70 cursor-not-allowed hover:-translate-y-0 hover:shadow-none active:scale-100",
+                          )}
+                          onClick={handleCsvPredict}
+                          disabled={isLoading}
+                        >
+                          {csvPrediction.isPending
+                            ? "Analyzing batch..."
+                            : "Predict from Dataset"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </BackgroundGradient>
@@ -477,220 +486,141 @@ export default function PredictPage() {
 
         {result && (
           <AnimatedContent distance={44}>
-            <section className="space-y-4" id="results">
-              <div className="grid gap-4 lg:grid-cols-2 lg:auto-rows-fr">
-                <Card className="flex h-full flex-col border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
-                  <CardHeader>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <CardTitle className="text-slate-900">
+            <section className="mx-auto w-full max-w-5xl space-y-4" id="results">
+
+              <div className="grid gap-4 md:grid-cols-12">
+                {/* Result Summary Hero */}
+                <Card className="flex flex-col justify-between border-white/40 bg-white/60 backdrop-blur-lg shadow-xl rounded-3xl md:col-span-8 overflow-hidden">
+                  <div className="p-6 md:p-8">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                      <h2 className="text-xl font-bold tracking-tight text-slate-900">
                         Prediction Result
-                      </CardTitle>
+                      </h2>
                       <div className="flex items-center gap-2">
                         <button
                           onClick={exportResultAsJSON}
-                          className="rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+                          className="rounded-full bg-white/50 p-2 text-slate-600 shadow-sm border border-slate-200/50 hover:bg-white hover:text-slate-900 transition-colors"
                           title="Export as JSON"
                         >
                           <FileJson className="h-4 w-4" />
                         </button>
                         {result.insight_source && (
-                          <Badge className="border-slate-300 bg-slate-100 text-slate-700">
+                          <Badge className="border border-white/40 bg-white/50 backdrop-blur-md text-slate-700 shadow-sm px-3 rounded-full">
                             {result.insight_source === "GENAI_LLM" && (
-                              <Sparkles className="mr-1 h-3 w-3" />
+                              <Sparkles className="mr-1 h-3 w-3 text-indigo-500" />
                             )}
                             {result.insight_source === "GENAI_LLM"
                               ? "GenAI Insight"
                               : "Rule Insight"}
                           </Badge>
                         )}
-                        <Badge className={RISK_BADGE_STYLES[result.risk_level]} title={`Risk probability: ${probabilityLabel}`}>
-                          {result.risk_level}
-                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-start justify-between gap-2">
-                      <CardDescription className="flex-1 text-slate-600">
-                        {result.insight_summary ??
-                          "Top-level summary from the prediction response."}
-                      </CardDescription>
-                      <button
-                        onClick={handleCopySummary}
-                        className="flex-shrink-0 rounded-md p-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
-                        title="Copy summary"
-                      >
-                        {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="flex flex-1 flex-col space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <Card className="border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
-                        <CardContent className="space-y-1 py-5">
-                          <p className="text-xs uppercase tracking-wider text-slate-600">
-                            Risk Probability
-                          </p>
-                          <p className="text-2xl font-semibold text-slate-900">
-                            {probabilityLabel}
-                          </p>
-                        </CardContent>
-                      </Card>
-                      <Card className="border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
-                        <CardContent className="space-y-1 py-5">
-                          <p className="text-xs uppercase tracking-wider text-slate-600">
-                            Confidence
-                          </p>
-                          <p className="text-2xl font-semibold text-slate-900">
-                            {confidenceLabel}
-                          </p>
-                        </CardContent>
-                      </Card>
-                      <Card className="border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
-                        <CardContent className="space-y-1 py-5">
-                          <p className="inline-flex items-center gap-2 text-xs uppercase tracking-wider text-slate-600">
-                            <Gauge className="h-3.5 w-3.5" />
-                            Records Predicted
-                          </p>
-                          <p className="text-2xl font-semibold text-slate-900">
-                            {result.total_records}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    </div>
 
-                    {result.data_warnings && result.data_warnings.length > 0 && (
-                      <Card className="border-amber-300 bg-amber-50/70 shadow-md">
-                        <CardContent className="space-y-2 py-4">
-                          <p className="inline-flex items-center gap-2 text-sm font-semibold text-amber-900">
-                            <AlertTriangle className="h-4 w-4" />
-                            Data quality warnings
-                          </p>
-                          <ul className="space-y-1 text-sm text-amber-800">
-                            {result.data_warnings.map((warning) => (
-                              <li key={warning}>• {warning}</li>
-                            ))}
-                          </ul>
-                        </CardContent>
-                      </Card>
-                    )}
+                    <div className="flex flex-col gap-6">
+                      <div className="flex items-end gap-4">
+                        <div className={cn("flex flex-col justify-center px-6 py-4 rounded-2xl border shadow-sm", RISK_BADGE_STYLES[result.risk_level])}>
+                          <span className="text-xs uppercase tracking-wider font-bold opacity-80 mb-1">Risk Level</span>
+                          <span className="text-3xl font-black">{result.risk_level}</span>
+                        </div>
+                        <div className="flex flex-col pb-1">
+                          <span className="text-sm font-medium text-slate-500 uppercase tracking-widest">Probability</span>
+                          <span className="text-4xl font-light tracking-tighter text-slate-900">{probabilityLabel}</span>
+                        </div>
+                      </div>
 
-                    {batchRows.length > 1 && (
-                      <Card className="border-slate-200 bg-slate-50">
-                        <CardHeader className="pb-2">
-                          <div className="flex items-center justify-between">
-                            <CardTitle className="text-base text-slate-900">
-                              Batch Preview
-                            </CardTitle>
-                            <Badge className="border-slate-300 bg-slate-100 text-slate-700">
-                              {batchRows.length} of {result.total_records}
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <Table>
-                            <TableHeader>
-                              <TableRow className="border-slate-200 hover:bg-transparent">
-                                <TableHead className="text-slate-600">Row</TableHead>
-                                <TableHead className="text-slate-600">Risk</TableHead>
-                                <TableHead className="text-right text-slate-600">
-                                  Probability
-                                </TableHead>
-                                <TableHead className="text-right text-slate-600">
-                                  Confidence
-                                </TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {batchRows.map((item, index) => (
-                                <TableRow
-                                  key={`${item.risk_level}-${index}`}
-                                  className={cn(
-                                    "border-slate-200 transition-colors hover:bg-slate-50",
-                                    index % 2 === 0 ? "bg-white" : "bg-slate-50/50"
-                                  )}
-                                >
-                                  <TableCell className="text-slate-700">
-                                    #{index + 1}
-                                  </TableCell>
-                                  <TableCell className="text-slate-900">
-                                    {item.risk_level}
-                                  </TableCell>
-                                  <TableCell className="text-right text-slate-700">
-                                    {(item.risk_probability * 100).toFixed(2)}%
-                                  </TableCell>
-                                  <TableCell className="text-right text-slate-700">
-                                    {(item.confidence * 100).toFixed(2)}%
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </CardContent>
-                      </Card>
-                    )}
-                  </CardContent>
+                      <div className="relative group rounded-2xl bg-white/40 p-4 border border-white/50 shadow-inner">
+                        <div className="flex items-start justify-between gap-4">
+                          <p className="text-slate-700 leading-relaxed font-medium">
+                            {result.insight_summary ?? "Standard insight summary unavailable."}
+                          </p>
+                          <button
+                            onClick={handleCopySummary}
+                            className="flex-shrink-0 rounded-full bg-white p-2 text-slate-400 shadow-sm border border-slate-200 opacity-80 hover:opacity-100 hover:text-slate-800 transition-all"
+                            title="Copy summary"
+                          >
+                            {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </Card>
 
-                <Card className="flex h-full flex-col border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
-                  <CardHeader>
-                    <CardTitle className="text-slate-900">
-                      Meaningful Insight
-                    </CardTitle>
-                    <CardDescription className="text-slate-600">
-                      Row-specific drivers based on normalized inputs and
-                      maintenance heuristics.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="flex flex-1 flex-col space-y-4">
-                    <div className="flex-1">
+                {/* Micro Stats */}
+                <div className="flex flex-col gap-4 md:col-span-4">
+                  <div className="flex-1 flex flex-col justify-center p-6 border border-white/40 bg-white/60 backdrop-blur-lg shadow-xl rounded-3xl">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Model Confidence</p>
+                    <p className="text-4xl font-light tracking-tight text-slate-900">{confidenceLabel}</p>
+                    <div className="mt-4 h-1.5 w-full rounded-full bg-slate-200/50 overflow-hidden">
+                      <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${result.confidence * 100}%` }} />
+                    </div>
+                  </div>
+                  <div className="flex-1 flex flex-col justify-center p-6 border border-white/40 bg-white/60 backdrop-blur-lg shadow-xl rounded-3xl">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Gauge className="h-4 w-4 text-slate-400" />
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-500">Records Scored</p>
+                    </div>
+                    <p className="text-4xl font-light tracking-tight text-slate-900">{result.total_records.toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {result.data_warnings && result.data_warnings.length > 0 && (
+                <div className="rounded-2xl border border-amber-300/50 bg-amber-50/80 backdrop-blur-lg px-6 py-4 shadow-sm">
+                  <p className="inline-flex items-center gap-2 text-sm font-semibold text-amber-900 mb-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    Data Quality Warnings
+                  </p>
+                  <ul className="space-y-1 text-sm text-amber-800">
+                    {result.data_warnings.map((warning, i) => (
+                      <li key={i}>• {warning}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="grid gap-4 lg:grid-cols-12">
+                {/* Insights and Actions Col */}
+                <div className="flex flex-col gap-4 lg:col-span-7">
+                  <Card className="flex flex-col border-white/40 bg-white/60 backdrop-blur-lg shadow-xl rounded-3xl overflow-hidden">
+                    <CardHeader className="bg-white/30 border-b border-white/20 pb-4">
+                      <CardTitle className="text-lg text-slate-900">Meaningful Insight Drivers</CardTitle>
+                      <CardDescription className="text-slate-600 text-xs">
+                        Local heuristic reasoning normalized.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
                       <Table>
-                        <TableHeader>
-                          <TableRow className="border-slate-200 hover:bg-transparent">
-                            <TableHead className="text-slate-600">Driver</TableHead>
-                            <TableHead className="text-slate-600">Observed</TableHead>
-                            <TableHead className="text-right text-slate-600">
-                              Impact
-                            </TableHead>
+                        <TableHeader className="bg-slate-50/50">
+                          <TableRow className="border-b border-white/20 hover:bg-transparent">
+                            <TableHead className="text-slate-500 font-semibold px-6 text-xs h-10">Driver</TableHead>
+                            <TableHead className="text-slate-500 font-semibold text-xs h-10">Observed</TableHead>
+                            <TableHead className="text-right text-slate-500 font-semibold px-6 text-xs h-10">Impact</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
                           {insightRows.length === 0 && (
-                            <TableRow className="border-slate-200">
-                              <TableCell className="text-slate-600">
-                                No insight drivers returned.
-                              </TableCell>
-                              <TableCell />
-                              <TableCell />
+                            <TableRow>
+                              <TableCell colSpan={3} className="text-center text-slate-500 py-8">No insight drivers returned.</TableCell>
                             </TableRow>
                           )}
                           {insightRows.map((driver) => (
-                            <TableRow
-                              key={`${driver.factor}-${driver.observed_value}`}
-                              className="border-slate-200 transition-colors hover:bg-slate-50"
-                            >
-                              <TableCell className="space-y-1 text-slate-900">
-                                <p className="font-medium">{driver.factor}</p>
-                                <p className="text-xs text-slate-600">
-                                  {driver.explanation}
-                                </p>
+                            <TableRow key={`${driver.factor}-${driver.observed_value}`} className="border-b border-white/20 transition-all duration-200 hover:bg-cyan-50/40">
+                              <TableCell className="px-6 py-3 min-w-[240px]">
+                                <p className="font-semibold text-slate-900 text-sm whitespace-nowrap overflow-hidden text-ellipsis w-48">{driver.factor}</p>
+                                <p className="text-[11px] text-slate-500 mt-0.5 max-w-[280px] line-clamp-2">{driver.explanation}</p>
                               </TableCell>
-                              <TableCell className="text-slate-700">
-                                {driver.observed_value}
-                              </TableCell>
-                              <TableCell className="text-right">
+                              <TableCell className="text-sm font-mono text-slate-700 py-3">{driver.observed_value}</TableCell>
+                              <TableCell className="text-right px-6 py-3">
                                 <div className="inline-flex items-center gap-2">
-                                  <Badge className={DRIVER_BADGE_STYLES[driver.direction]}>
-                                    {driver.direction === "RISK_UP" && (
-                                      <ArrowUpRight className="mr-1 h-3 w-3" />
-                                    )}
-                                    {driver.direction === "RISK_DOWN" && (
-                                      <ArrowDownRight className="mr-1 h-3 w-3" />
-                                    )}
-                                    {driver.direction === "NEUTRAL" && (
-                                      <Info className="mr-1 h-3 w-3" />
-                                    )}
+                                  <Badge className={cn("px-2 py-0.5 rounded text-[10px] shadow-sm", DRIVER_BADGE_STYLES[driver.direction])}>
+                                    {driver.direction === "RISK_UP" && <ArrowUpRight className="mr-1 h-3 w-3" />}
+                                    {driver.direction === "RISK_DOWN" && <ArrowDownRight className="mr-1 h-3 w-3" />}
+                                    {driver.direction === "NEUTRAL" && <Info className="mr-1 h-3 w-3" />}
                                     {driver.direction.replace("_", " ")}
                                   </Badge>
-                                  <span className="text-sm text-slate-700">
+                                  <span className="text-xs font-bold text-slate-700 w-8 text-right">
                                     {(driver.impact * 100).toFixed(0)}%
                                   </span>
                                 </div>
@@ -699,159 +629,162 @@ export default function PredictPage() {
                           ))}
                         </TableBody>
                       </Table>
-                    </div>
+                    </CardContent>
+                  </Card>
 
-                    {recommendationRows.length > 0 && (
-                      <Card className="border-slate-200 bg-slate-50 mt-auto">
-                        <CardHeader className="pb-2">
-                          <CardTitle className="text-base text-slate-900">
-                            Recommended Actions
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                          {recommendationRows.map((recommendation, idx) => (
-                            <div
-                              key={recommendation.action}
-                              className="rounded-lg border border-slate-200 bg-white p-3 transition-all hover:shadow-md"
-                              style={{ animationDelay: `${idx * 50}ms` }}
-                            >
-                              <div className="flex items-start justify-between gap-2">
-                                <p className="text-sm font-medium text-slate-900">
-                                  {recommendation.action}
-                                </p>
-                                <Badge
-                                  className={
-                                    PRIORITY_BADGE_STYLES[recommendation.priority]
-                                  }
-                                >
-                                  {recommendation.priority}
-                                </Badge>
-                              </div>
-                              <p className="mt-1 text-xs text-slate-600">
-                                {recommendation.rationale}
+                  {recommendationRows.length > 0 && (
+                    <Card className="flex flex-col border-white/40 bg-white/60 backdrop-blur-lg shadow-xl rounded-3xl overflow-hidden">
+                      <CardHeader className="bg-white/30 border-b border-white/20 pb-4">
+                        <CardTitle className="text-lg text-slate-900">Recommended Actions</CardTitle>
+                      </CardHeader>
+                      <CardContent className="p-4 space-y-3">
+                        {recommendationRows.map((recommendation, idx) => (
+                          <div
+                            key={recommendation.action}
+                            className="rounded-2xl border border-white/50 bg-white/70 p-4 shadow-sm hover:shadow-md transition-all"
+                            style={{ animationDelay: `${idx * 50}ms` }}
+                          >
+                            <div className="flex items-start justify-between gap-4 mb-1">
+                              <p className="text-sm font-bold text-slate-900 leading-tight">
+                                {recommendation.action}
                               </p>
+                              <Badge className={cn("shadow-sm rounded capitalize text-[10px] px-2 py-0.5", PRIORITY_BADGE_STYLES[recommendation.priority])}>
+                                {recommendation.priority}
+                              </Badge>
                             </div>
-                          ))}
-                        </CardContent>
-                      </Card>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+                            <p className="text-xs text-slate-600">
+                              {recommendation.rationale}
+                            </p>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
 
-              <Card className="border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Gauge className="h-5 w-5 text-slate-700" />
-                    <CardTitle className="text-slate-900">
-                      Feature Importance (Global)
-                    </CardTitle>
-                  </div>
-                  <CardDescription className="text-slate-600">
-                    Model-level feature weights. These percentages are global
-                    model influence, not this row specific local contribution.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-slate-200 hover:bg-transparent">
-                        <TableHead className="text-slate-600">Feature</TableHead>
-                        <TableHead className="text-right text-slate-600">
-                          Importance
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {featureRows.length === 0 && (
-                        <TableRow className="border-slate-200">
-                          <TableCell className="text-slate-600">
-                            No feature importance returned.
-                          </TableCell>
-                          <TableCell />
-                        </TableRow>
-                      )}
-                      {featureRows.map(({ feature, importance }) => (
-                        <TableRow key={feature} className="border-slate-200 transition-colors hover:bg-slate-50">
-                          <TableCell className="capitalize text-slate-900">
-                            {feature.replace(/_/g, " ")}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              <div className="h-2 w-24 overflow-hidden rounded-full bg-slate-200">
-                                <div
-                                  className="h-full bg-cyan-500 transition-all"
-                                  style={{ width: `${importance * 100}%` }}
-                                />
-                              </div>
-                              <span className="text-sm text-slate-700">
-                                {(importance * 100).toFixed(2)}%
-                              </span>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+                {/* Stats & Batch Col */}
+                <div className="flex flex-col gap-4 lg:col-span-5">
+                  <Card className="flex flex-col border-white/40 bg-white/60 backdrop-blur-lg shadow-xl rounded-3xl overflow-hidden">
+                    <CardHeader className="bg-white/30 border-b border-white/20 pb-4">
+                      <div className="flex items-center gap-2">
+                        <Gauge className="h-4 w-4 text-cyan-600" />
+                        <CardTitle className="text-lg text-slate-900">Feature Importance</CardTitle>
+                      </div>
+                      <CardDescription className="text-slate-600 text-xs">
+                        Global model weights impact.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableBody>
+                          {featureRows.length === 0 && (
+                            <TableRow>
+                              <TableCell className="text-center text-slate-500 py-6">No features returned.</TableCell>
+                            </TableRow>
+                          )}
+                          {featureRows.map(({ feature, importance }) => (
+                            <TableRow key={feature} className="border-b border-white/20 hover:bg-white/40">
+                              <TableCell className="capitalize text-sm font-medium text-slate-800 px-6 py-3">
+                                {feature.replace(/_/g, " ")}
+                              </TableCell>
+                              <TableCell className="text-right px-6 py-3">
+                                <div className="flex items-center justify-end gap-3">
+                                  <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-200/50 shadow-inner">
+                                    <div
+                                      className="h-full bg-cyan-500 rounded-full"
+                                      style={{ width: `${importance * 100}%` }}
+                                    />
+                                  </div>
+                                  <span className="text-xs font-mono font-medium text-slate-700 w-10 text-right">
+                                    {(importance * 100).toFixed(1)}%
+                                  </span>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+
+                  {batchRows.length > 1 && (
+                    <Card className="flex flex-col border-white/40 bg-white/60 backdrop-blur-lg shadow-xl rounded-3xl overflow-hidden">
+                      <CardHeader className="bg-white/30 border-b border-white/20 pb-4 flex flex-row items-center justify-between">
+                        <CardTitle className="text-lg text-slate-900">Batch Preview</CardTitle>
+                        <Badge className="bg-slate-800 text-white rounded-full px-3">{batchRows.length} shown</Badge>
+                      </CardHeader>
+                      <CardContent className="p-0">
+                        <Table>
+                          <TableHeader className="bg-slate-50/50">
+                            <TableRow className="border-b border-white/20 hover:bg-transparent">
+                              <TableHead className="text-slate-500 font-semibold text-xs px-6 h-9">Row</TableHead>
+                              <TableHead className="text-slate-500 font-semibold text-xs h-9">Level</TableHead>
+                              <TableHead className="text-right text-slate-500 font-semibold text-xs px-6 h-9">Prob.</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {batchRows.map((item, index) => (
+                              <TableRow key={`${item.risk_level}-${index}`} className="border-b border-white/20 hover:bg-white/40">
+                                <TableCell className="text-xs font-mono px-6 py-2 text-slate-500">#{index + 1}</TableCell>
+                                <TableCell className="py-2">
+                                  <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded shadow-sm", RISK_BADGE_STYLES[item.risk_level])}>
+                                    {item.risk_level}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-right text-xs font-mono text-slate-700 px-6 py-2">
+                                  {(item.risk_probability * 100).toFixed(1)}%
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              </div>
             </section>
           </AnimatedContent>
         )}
 
         <AnimatedContent distance={34} delay={0.05}>
-          <Card className="border-slate-200 bg-white/95 shadow-sm shadow-slate-200/60">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base text-slate-900">
-                Input and Model Notes
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Accordion type="single" collapsible className="w-full">
-                <AccordionItem value="input-spec" className="border-slate-200">
-                  <AccordionTrigger className="text-slate-900 hover:text-cyan-600 hover:no-underline transition-colors">
-                    Minimum input schema
-                  </AccordionTrigger>
-                  <AccordionContent className="text-slate-600">
-                    mileage, engine_hours, fault_codes, service_history, and
-                    usage_patterns are required for manual and CSV workflows.
-                  </AccordionContent>
-                </AccordionItem>
-                <AccordionItem value="latency" className="border-slate-200">
-                  <AccordionTrigger className="text-slate-900 hover:text-cyan-600 hover:no-underline transition-colors">
-                    Performance
-                  </AccordionTrigger>
-                  <AccordionContent className="text-slate-600">
-                    The backend warms the model once at startup and keeps
-                    per-request prediction latency low.
-                  </AccordionContent>
-                </AccordionItem>
-                <AccordionItem value="model-info" className="border-slate-200">
-                  <AccordionTrigger className="text-slate-900 hover:text-cyan-600 hover:no-underline transition-colors">
-                    Risk thresholds
-                  </AccordionTrigger>
-                  <AccordionContent className="text-slate-600">
-                    LOW &lt; 0.30, MEDIUM 0.30-0.69, HIGH &gt;= 0.70. Risk
-                    probability is the model output for HIGH risk. Confidence
-                    is max(probability, 1 - probability).
-                  </AccordionContent>
-                </AccordionItem>
-                <AccordionItem value="importance-info" className="border-slate-200">
-                  <AccordionTrigger className="text-slate-900 hover:text-cyan-600 hover:no-underline transition-colors">
-                    Why feature importance can look confusing
-                  </AccordionTrigger>
-                  <AccordionContent className="text-slate-600">
-                    Feature importance values are global model weights, not
-                    per-row explanations. Use the Meaningful Insight section
-                    for row-specific operational interpretation.
-                  </AccordionContent>
-                </AccordionItem>
-              </Accordion>
-              <p className="mt-4 text-xs text-slate-500 text-center">
-                FleetAI v1.0 • Milestone 1 • Powered by sklearn ML pipeline
-              </p>
-            </CardContent>
-          </Card>
+          <section className="mx-auto w-full max-w-5xl">
+            <Card className="border-white/40 bg-white/40 backdrop-blur-xl shadow-lg rounded-3xl overflow-hidden">
+              <CardHeader className="pb-2 bg-white/20">
+                <CardTitle className="text-sm font-semibold text-slate-900 uppercase tracking-widest px-2">
+                  Reference Notes
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-6 py-2">
+                <Accordion type="single" collapsible className="w-full">
+                  <AccordionItem value="input-spec" className="border-white/20">
+                    <AccordionTrigger className="text-sm font-medium text-slate-800 hover:text-cyan-700 hover:no-underline transition-colors py-3">
+                      Minimum input schema
+                    </AccordionTrigger>
+                    <AccordionContent className="text-slate-600 text-sm leading-relaxed pb-4">
+                      <code className="bg-white/60 px-1 py-0.5 rounded text-slate-800">mileage</code>, <code className="bg-white/60 px-1 py-0.5 rounded text-slate-800">engine_hours</code>, <code className="bg-white/60 px-1 py-0.5 rounded text-slate-800">fault_codes</code>, <code className="bg-white/60 px-1 py-0.5 rounded text-slate-800">service_history</code>, and <code className="bg-white/60 px-1 py-0.5 rounded text-slate-800">usage_patterns</code> are required for manual and CSV workflows.
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="latency" className="border-white/20">
+                    <AccordionTrigger className="text-sm font-medium text-slate-800 hover:text-cyan-700 hover:no-underline transition-colors py-3">
+                      Performance Architecture
+                    </AccordionTrigger>
+                    <AccordionContent className="text-slate-600 text-sm leading-relaxed pb-4">
+                      The backend warms the model once at startup and keeps per-request prediction latency low using persistent inference sessions.
+                    </AccordionContent>
+                  </AccordionItem>
+                  <AccordionItem value="model-info" className="border-transparent">
+                    <AccordionTrigger className="text-sm font-medium text-slate-800 hover:text-cyan-700 hover:no-underline transition-colors py-3">
+                      Risk thresholds
+                    </AccordionTrigger>
+                    <AccordionContent className="text-slate-600 text-sm leading-relaxed pb-4">
+                      LOW &lt; 0.30, MEDIUM 0.30-0.69, HIGH &gt;= 0.70. Risk calculations incorporate temporal decay and heuristics normalization.
+                    </AccordionContent>
+                  </AccordionItem>
+                </Accordion>
+              </CardContent>
+            </Card>
+          </section>
         </AnimatedContent>
       </div>
     </main>
