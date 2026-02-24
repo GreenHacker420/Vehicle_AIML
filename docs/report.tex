@@ -47,7 +47,7 @@ DataRiders \\}
 
 % ============================= ABSTRACT ===========================
 \begin{abstract}
-Unplanned vehicle breakdowns lead to costly repairs, operational downtime, and safety risks for fleet operators. This paper presents FleetAI, a vehicle maintenance risk prediction system that combines classical machine learning with a rule-based insight engine and optional generative AI enhancement. We train and compare four supervised classifiers on a 50,000-record synthetic vehicle telemetry dataset from Kaggle, selecting a tuned Random Forest pipeline that achieves 94.07\% accuracy and 1.0 ROC-AUC on the full feature set. Each prediction is enriched with structured insight drivers explaining what factors push risk up or down, actionable maintenance recommendations, and data quality warnings. When configured, a Gemini-powered LLM layer refines the natural-language summary and augments the recommendation set. The system is deployed as a FastAPI REST backend supporting JSON and CSV ingestion, with a Next.js dashboard for fleet managers. The complete source code, trained models, and documentation are available at \url{https://github.com/GreenHacker420/Vehicle_AIML}.
+Unplanned vehicle breakdowns cost fleet operators thousands of dollars in repairs, idle time, and missed deliveries every year. In this paper we present FleetAI, a system that predicts whether a vehicle is likely to need maintenance by combining classical machine learning with a structured insight engine and an optional generative AI layer. We trained and compared four supervised classifiers on a publicly available Kaggle dataset of 50,000 synthetic vehicle records. A tuned Random Forest pipeline was selected for deployment, achieving 94.07\% accuracy and a perfect 1.0 ROC AUC on the full feature set. Beyond the raw prediction, every result includes human readable insight drivers that explain which factors are pushing risk up or down, a prioritized list of recommended maintenance actions, and warnings when the input data looks unusual. When a Google Gemini API key is configured, the system also produces a polished natural language summary of the prediction. The whole stack is deployed as a FastAPI backend and a Next.js dashboard, both hosted on Vercel. All source code, the trained model, and project documentation are openly available at \url{https://github.com/GreenHacker420/Vehicle_AIML}.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -57,131 +57,129 @@ Vehicle maintenance prediction, fleet management, random forest, classification,
 % ============================= INTRODUCTION =======================
 \section{Introduction}
 
-Fleet-intensive industries such as logistics, public transit, and ride-hailing depend on vehicle uptime. When a vehicle breaks down unexpectedly, the consequences cascade: delayed deliveries, stranded passengers, emergency towing costs, and potential safety incidents. Scheduled maintenance programs reduce these risks, but they are typically calendar-based and do not account for actual vehicle condition.
+Anyone who has managed a fleet of vehicles knows how expensive surprise breakdowns can be. A delivery truck that stalls on a highway does not just need a tow; it delays every package on board, strains the rest of the fleet, and can put the driver at risk. Most companies try to avoid this by scheduling maintenance at fixed intervals, but that approach treats every vehicle the same regardless of how it is actually being used.
 
-Predictive maintenance closes this gap by using operational data to estimate when a vehicle is likely to need servicing. Fleet operators can then prioritize vehicles showing early signs of degradation rather than reacting to failures or following fixed schedules.
+Predictive maintenance offers a smarter alternative. Instead of servicing vehicles on a calendar, the idea is to use operational data to estimate which vehicles are most likely to fail soon and prioritize them accordingly. This lets fleet managers allocate their maintenance budgets where they matter most.
 
-However, a raw risk score alone is not enough. Operations teams need to understand \textit{why} a vehicle is flagged and \textit{what} to do about it. Most existing systems stop at the prediction step and leave interpretation to the user.
+The problem is that a bare risk score on its own is not very helpful. If the system says ``this truck has an 87\% chance of needing maintenance,'' the operations team still needs to know \textit{why} and \textit{what to do about it}. Most academic prototypes stop at the prediction and leave interpretation entirely to the user.
 
-FleetAI addresses this by combining ML prediction with a structured insight layer. Each prediction includes:
-\begin{itemize}
-    \item A risk level (\texttt{LOW}, \texttt{MEDIUM}, \texttt{HIGH}) with probability and confidence scores.
-    \item Insight drivers explaining which factors increase or decrease risk, with observed values and impact weights.
-    \item Actionable maintenance recommendations prioritized by severity.
-    \item Data quality warnings when input values fall outside expected ranges.
-    \item Optional GenAI-enhanced summaries via Google Gemini for natural-language explanations.
-\end{itemize}
+We built FleetAI to fill that gap. Every prediction that comes out of our system includes three things beyond the risk score itself. First, a set of structured insight drivers that tell the user exactly which input factors contributed to the risk and in which direction. Second, a list of concrete maintenance recommendations ranked by urgency. Third, data quality warnings that flag anything unusual about the input, such as mileage values that fall outside the range our model was trained on. On top of all that, when a Google Gemini API key is provided, the system produces a polished summary written in natural language by the LLM.
 
-Our primary contributions are:
+The main contributions of this work are as follows:
+
 \begin{enumerate}
-    \item A comparative evaluation of four classifiers with explicit data-leakage analysis on the Vehicle Maintenance dataset.
-    \item A tuned Random Forest pipeline achieving 94.07\% test accuracy with 1.0 ROC-AUC.
-    \item A rule-based insight engine that generates structured explanations and recommendations from prediction context.
-    \item An optional LLM integration layer using Google Gemini for enhanced natural-language insight generation via LangChain.
-    \item A production-ready REST API (FastAPI) and modern dashboard (Next.js) for single and batch predictions, deployed on Vercel.
+    \item We compare four classifiers on the Vehicle Maintenance dataset and explicitly investigate data leakage, reporting results on both the full and clean feature sets.
+    \item We train and tune a Random Forest pipeline that reaches 94.07\% accuracy on the test set.
+    \item We design a deterministic, rule based insight engine that generates structured explanations and recommendations with zero external dependencies.
+    \item We integrate an optional LLM layer powered by Google Gemini through LangChain, with graceful fallback to the rule based engine if the LLM is unavailable.
+    \item We deploy the complete system as a production ready REST API with a modern web dashboard, both running on Vercel.
 \end{enumerate}
 
 % ============================= RELATED WORK =======================
 \section{Related Work}
 
-Predictive maintenance has been explored across multiple domains. Carvalho et al.~\cite{carvalho2019} provide a broad review of machine-learning approaches for industrial maintenance, highlighting Random Forest and Gradient Boosting for fault classification. Susto et al.~\cite{susto2015} demonstrate that ensemble tree methods outperform linear classifiers in semiconductor equipment maintenance prediction. In the automotive space, Canizo et al.~\cite{canizo2017} apply deep learning to fleet telematics data with strong results but reduced interpretability.
+The idea of using machine learning for maintenance prediction has been explored extensively across several industries. Carvalho et al.~\cite{carvalho2019} surveyed the literature and found that ensemble methods such as Random Forest and Gradient Boosting consistently perform well for fault classification tasks. Susto et al.~\cite{susto2015} reached a similar conclusion when predicting semiconductor equipment failures, showing that tree ensembles outperform linear models by a significant margin. In the automotive domain specifically, Canizo et al.~\cite{canizo2017} applied deep learning to fleet telematics data and achieved strong predictive performance, although at the cost of model interpretability.
 
-Recent work has explored using large language models (LLMs) for maintenance report generation. Brown et al.~\cite{brown2024} show that combining structured ML outputs with LLM-generated summaries improves operator comprehension and action rates compared to dashboards showing only numerical risk scores.
+More recently, researchers have started experimenting with large language models to make maintenance outputs easier for non technical users to understand. Brown et al.~\cite{brown2024} demonstrated that pairing structured ML predictions with LLM generated summaries measurably improved operator comprehension and the rate at which they took corrective action, compared to dashboards that only showed numerical scores.
 
-Our work differs in three ways. First, we investigate data leakage in synthetic datasets and report results with and without leaking features. Second, we build a deterministic rule-based insight engine that works without any external API dependency, ensuring the system remains functional even when GenAI services are unavailable. Third, we layer optional LLM enhancement on top of the rule-based baseline, letting operators benefit from natural-language insights when configured.
+Our work builds on these findings but takes a different approach in three respects. First, we explicitly test for data leakage in the synthetic dataset and report honest numbers for both the leaked and clean scenarios. Second, rather than relying on an LLM as the sole explanation mechanism, we implemented a fully deterministic rule based insight engine that runs without any external API calls. Third, we treat the LLM as an optional enhancement layer that sits on top of the rule engine, so the system degrades gracefully when the Gemini service is not available.
 
 % ============================= METHODOLOGY ========================
 \section{Methodology}
 
 \subsection{Dataset Description}
 
-We use the Vehicle Maintenance Data dataset from Kaggle~\cite{kaggle_dataset}, containing 50,000 records with 19 input features and one binary target (\texttt{Need\_Maintenance}). The features span:
+We used the Vehicle Maintenance Data dataset published on Kaggle by Dulaj~\cite{kaggle_dataset}. It contains 50,000 synthetically generated vehicle records with 19 input features and a single binary target column called \texttt{Need\_Maintenance}. The features cover a broad range of vehicle characteristics:
+
 \begin{itemize}
-    \item \textbf{Vehicle specifications}: model, age, engine size, fuel type, transmission type
-    \item \textbf{Operational metrics}: mileage, odometer reading, fuel efficiency
-    \item \textbf{Service records}: maintenance history, service history score, days since service, days until warranty expiry
-    \item \textbf{Incident data}: reported issues, accident history
-    \item \textbf{Component condition}: tire condition, brake condition, battery status
+    \item Vehicle specifications such as model name, age, engine size, fuel type, and transmission type.
+    \item Operational metrics including mileage, odometer reading, and fuel efficiency.
+    \item Service records like maintenance history counts, a service history score, days since the last service visit, and days remaining until warranty expiry.
+    \item Incident data covering the number of reported issues and past accident history.
+    \item Component condition indicators for tires, brakes, and battery.
 \end{itemize}
 
-The target is imbalanced: approximately 81\% of records are labeled as needing maintenance and 19\% do not.
+One important characteristic of this dataset is the class imbalance. Roughly 81\% of the records are labeled as needing maintenance and only about 19\% are not. We took this into account during model training, as described below.
 
 \subsection{Exploratory Data Analysis}
 
-We perform thorough exploratory data analysis to understand the data distribution and feature relationships before model training.
+Before training any model, we spent time understanding the data through visualization and statistical analysis.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.45\textwidth]{target_distribution.png}
-\caption{Distribution of the target variable (\texttt{Need\_Maintenance}). The dataset exhibits a significant class imbalance with approximately 81\% positive (needs maintenance) and 19\% negative instances.}
+\caption{Distribution of the target variable (\texttt{Need\_Maintenance}). About 81\% of vehicles are labeled as needing maintenance, creating a notable class imbalance.}
 \label{fig:target_dist}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.45\textwidth]{numerical_distributions.png}
-\caption{Distribution of numerical features across the dataset. Most features exhibit uniform or near-normal distributions, consistent with synthetic data generation.}
+\caption{Distributions of numerical features. Most features follow uniform or near normal shapes, which is consistent with how synthetic datasets are typically generated.}
 \label{fig:num_dist}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.45\textwidth]{categorical_distributions.png}
-\caption{Distribution of categorical features. Component-condition features (tire, brake, battery) show non-uniform distributions that correlate strongly with the target variable.}
+\caption{Distributions of categorical features. The component condition columns (tire, brake, battery) show uneven category frequencies that turned out to correlate very strongly with the target.}
 \label{fig:cat_dist}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.45\textwidth]{correlation_heatmap.png}
-\caption{Correlation heatmap of all numerical features. \texttt{Reported\_Issues} shows the strongest linear correlation (0.39) with the target. Most other features exhibit weak linear correlations, indicating the target depends on non-linear interactions.}
+\caption{Correlation heatmap of numerical features. \texttt{Reported\_Issues} has the highest linear correlation with the target at 0.39. Most other features show weak correlations, which suggests the target depends on nonlinear combinations of inputs.}
 \label{fig:correlation}
 \end{figure}
 
 \subsection{Preprocessing}
 
-Numerical features (11 total) are standardized using \texttt{StandardScaler}. Categorical features (8 total) are transformed via \texttt{OneHotEncoder} with unknown-category handling. Both transformations are composed in a \texttt{ColumnTransformer} and serialized as part of a single scikit-learn \texttt{Pipeline}.
+The 11 numerical features were standardized using \texttt{StandardScaler} so that each one has zero mean and unit variance. The 8 categorical features were converted into binary indicator columns using \texttt{OneHotEncoder} with unknown category handling enabled. We wrapped both transformations inside a \texttt{ColumnTransformer} and chained the result with the classifier into a single scikit learn \texttt{Pipeline}, which was then serialized to disk.
 
-No missing values were present. Date fields (\texttt{Last\_Service\_Date}, \texttt{Warranty\_Expiry}) were converted to integer day counts relative to a fixed reference date before training.
+There were no missing values in the dataset. The two date columns (\texttt{Last\_Service\_Date} and \texttt{Warranty\_Expiry}) were converted to integer day counts relative to a fixed reference date so the model could work with them numerically.
 
 \subsection{Feature Engineering}
 
-Correlation analysis (Figure~\ref{fig:correlation}) revealed \texttt{Reported\_Issues} as the strongest linear predictor (correlation 0.39 with target). \texttt{Service\_History} and \texttt{Accident\_History} show moderate correlations. Most other numerical features exhibit weak linear correlation, indicating the target depends on non-linear feature interactions---a property well-suited for tree-based models.
+Looking at the correlation heatmap in Figure~\ref{fig:correlation}, we noticed that \texttt{Reported\_Issues} stood out as the strongest linear predictor, with a correlation of 0.39. \texttt{Service\_History} and \texttt{Accident\_History} showed moderate correlations. The rest of the numerical features had fairly weak linear relationships with the target, which pointed toward nonlinear interactions as the main signal. This is exactly the kind of pattern where tree based models tend to shine.
 
-We investigated data leakage by cross-tabulating categorical features against the target. Component-condition features showed near-deterministic relationships: 100\% of vehicles with ``Worn Out'' brakes or ``Weak'' batteries require maintenance. This confirms these features describe the vehicle's current state from which the target was derived.
+We also investigated potential data leakage by cross tabulating the categorical features against the target. What we found was concerning: component condition features had an almost deterministic relationship with the label. For example, 100\% of vehicles with ``Worn Out'' brakes and 100\% of vehicles with ``Weak'' batteries were labeled as needing maintenance. This makes sense when you think about it, because knowing the exact brake or battery condition essentially gives away the answer.
 
-We train models on both the full feature set (19 features) and a reduced set (15 features) excluding the four leaking condition features, documenting the performance gap transparently.
+To be transparent about this, we trained and evaluated models on two separate feature sets. The full set includes all 19 features, while the realistic set drops the four leaking condition columns and uses only 15 features.
 
 \subsection{Models Used}
 
-We evaluate four classifiers:
+We evaluated four classifiers to get a sense of how different modeling approaches handle this particular dataset:
+
 \begin{enumerate}
-    \item \textbf{Logistic Regression}: Linear baseline with L2 regularization and balanced class weights. Serves as a simple, interpretable reference.
-    \item \textbf{Decision Tree}: Single tree with balanced class weights. Provides a non-linear baseline with direct interpretability.
-    \item \textbf{Random Forest}: Ensemble of 100 bagged decision trees with balanced class weights. Reduces overfitting through averaging.
-    \item \textbf{Gradient Boosting}: Sequential boosting with 100 estimators. Builds trees iteratively to correct residual errors.
+    \item \textbf{Logistic Regression}: A simple linear model with L2 regularization and balanced class weights. We included this primarily as an interpretable baseline.
+    \item \textbf{Decision Tree}: A single tree classifier with balanced class weights. It captures nonlinear patterns but is prone to overfitting.
+    \item \textbf{Random Forest}: An ensemble of 100 bagged decision trees with balanced class weights. By averaging many trees, it reduces variance and tends to generalize better.
+    \item \textbf{Gradient Boosting}: A sequential ensemble of 100 boosted trees. Each new tree focuses on correcting the mistakes of the previous ones.
 \end{enumerate}
 
-All models use \texttt{class\_weight='balanced'} to handle the 81/19 class imbalance by automatically adjusting sample weights inversely proportional to class frequencies.
+Every model was configured with balanced class weights so that the minority class (no maintenance needed) would not be drowned out by the majority.
 
 \subsection{Training and Validation}
 
-The dataset is split 80/20 into training (40,000) and test (10,000) sets using stratified sampling to preserve class proportions. Model selection uses 5-fold stratified cross-validation with ROC-AUC as the primary metric. Hyperparameter tuning of the selected model uses \texttt{GridSearchCV} over tree depth, minimum samples per split, minimum samples per leaf, and number of estimators.
+We split the 50,000 records into 80\% for training (40,000 records) and 20\% for testing (10,000 records) using stratified sampling to keep the class proportions consistent. Model selection was based on 5 fold stratified cross validation with ROC AUC as the primary metric.
+
+After selecting Random Forest as the best candidate, we fine tuned its hyperparameters using \texttt{GridSearchCV}. The search covered tree depth, minimum samples per split, minimum samples per leaf, and the number of estimators.
 
 % ============================= RESULTS ============================
 \section{Results}
 
 \subsection{Quantitative Results}
 
-Table~\ref{tab:full} presents performance on the full feature set (including leaking features).
+Table~\ref{tab:full} shows how all four models performed on the full feature set, which includes the leaking component condition columns.
 
 \begin{table}[H]
 \centering
-\caption{Model Performance --- Full Feature Set (19 features)}
+\caption{Model performance on the full feature set (all 19 features).}
 \label{tab:full}
 \begin{tabular}{lccc}
 \toprule
-Model & Accuracy & ROC-AUC & F1 (wt.) \\
+Model & Accuracy & ROC AUC & F1 (wt.) \\
 \midrule
 Logistic Regression & 0.960 & 0.988 & 0.961 \\
 Decision Tree & \textbf{1.000} & \textbf{1.000} & \textbf{1.000} \\
@@ -191,15 +189,15 @@ Gradient Boosting & \textbf{1.000} & \textbf{1.000} & \textbf{1.000} \\
 \end{tabular}
 \end{table}
 
-Table~\ref{tab:realistic} shows results on the realistic feature set with leaking features removed.
+Table~\ref{tab:realistic} tells a very different story. Here we removed the four leaking features and trained on the remaining 15.
 
 \begin{table}[H]
 \centering
-\caption{Model Performance --- Realistic Feature Set (15 features, no leakage)}
+\caption{Model performance on the realistic feature set (15 features, no leakage).}
 \label{tab:realistic}
 \begin{tabular}{lccc}
 \toprule
-Model & Accuracy & ROC-AUC & F1 (wt.) \\
+Model & Accuracy & ROC AUC & F1 (wt.) \\
 \midrule
 Logistic Regression & 0.707 & 0.800 & 0.737 \\
 Decision Tree & 0.696 & 0.820 & 0.729 \\
@@ -209,23 +207,18 @@ Gradient Boosting & \textbf{0.806} & \textbf{0.827} & \textbf{0.738} \\
 \end{tabular}
 \end{table}
 
-The near-perfect scores on the full set confirm data leakage through component-condition features. On the realistic set, all models cluster around 70--80\% accuracy, establishing a baseline without information leakage.
+The contrast between these two tables is striking. On the full set, three of the four models achieve perfect or near perfect scores, which is a clear red flag for data leakage. On the realistic set, accuracy drops to the 70 to 80 percent range, which is a more honest reflection of the actual predictive signal in the data.
 
-Cross-validation (5-fold stratified) on the full feature set:
-\begin{itemize}
-    \item Logistic Regression: ROC-AUC = $0.9871 \pm 0.0005$
-    \item Decision Tree: ROC-AUC = $1.0000 \pm 0.0000$
-    \item Random Forest: ROC-AUC = $1.0000 \pm 0.0000$
-    \item Gradient Boosting: ROC-AUC = $1.0000 \pm 0.0000$
-\end{itemize}
+We also ran 5 fold stratified cross validation on the full feature set. Logistic Regression achieved a mean ROC AUC of $0.9871 \pm 0.0005$, while the other three models all scored $1.0000 \pm 0.0000$.
 
-After hyperparameter tuning via \texttt{GridSearchCV} (\texttt{max\_depth}=8, \texttt{min\_samples\_leaf}=10, \texttt{min\_samples\_split}=5, \texttt{n\_estimators}=100), the tuned Random Forest achieves on the held-out test set:
+After tuning Random Forest with \texttt{GridSearchCV} (\texttt{max\_depth}=8, \texttt{min\_samples\_leaf}=10, \texttt{min\_samples\_split}=5, \texttt{n\_estimators}=100), we obtained the following metrics on the held out test set:
+
 \begin{itemize}
     \item Accuracy: 0.9407
-    \item ROC-AUC: 1.0000
+    \item ROC AUC: 1.0000
     \item Weighted F1: 0.9436
-    \item Precision (No Maintenance): 0.76, Recall: 1.00
-    \item Precision (Needs Maintenance): 1.00, Recall: 0.93
+    \item Precision for the ``No Maintenance'' class: 0.76 with Recall: 1.00
+    \item Precision for the ``Needs Maintenance'' class: 1.00 with Recall: 0.93
 \end{itemize}
 
 \subsection{Model Evaluation Plots}
@@ -233,42 +226,42 @@ After hyperparameter tuning via \texttt{GridSearchCV} (\texttt{max\_depth}=8, \t
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.45\textwidth]{confusion_matrix.png}
-\caption{Confusion matrix for the tuned Random Forest on the test set. The model correctly identifies all 1,879 negative-class samples and 7,528 of 8,121 positive-class samples, with 593 false negatives.}
+\caption{Confusion matrix for the tuned Random Forest. It correctly classifies all 1,879 negative samples and 7,528 out of 8,121 positive samples, with 593 false negatives.}
 \label{fig:confusion}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.45\textwidth]{roc_curve.png}
-\caption{ROC curves comparing all four models on the full feature set. Decision Tree, Random Forest, and Gradient Boosting all achieve perfect AUC of 1.0, while Logistic Regression achieves 0.988.}
+\caption{ROC curves for all four models. Decision Tree, Random Forest, and Gradient Boosting all reach an AUC of 1.0 on the full feature set, while Logistic Regression comes in at 0.988.}
 \label{fig:roc}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.45\textwidth]{feature_importance.png}
-\caption{Feature importance scores from the tuned Random Forest. \texttt{Reported\_Issues} is the dominant predictor, followed by component-condition features reflecting the data leakage discussed in Section IV-B.}
+\caption{Feature importance scores from the tuned Random Forest. \texttt{Reported\_Issues} dominates, followed by the component condition features, which further illustrates the leakage problem discussed earlier.}
 \label{fig:importance}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.45\textwidth]{permutation_importance.png}
-\caption{Permutation importance scores. Unlike tree-based feature importance, permutation importance measures accuracy drop when each feature is shuffled, providing a model-agnostic view of feature contributions.}
+\caption{Permutation importance scores. This is a model agnostic measure that works by shuffling each feature and measuring how much accuracy drops, giving us a second perspective on which features truly matter.}
 \label{fig:permutation}
 \end{figure}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.45\textwidth]{risk_levels.png}
-\caption{Distribution of predicted risk levels (\texttt{LOW}, \texttt{MEDIUM}, \texttt{HIGH}) across the test dataset, showing how the model's probability outputs map to the three-tier risk classification.}
+\caption{Distribution of predicted risk levels across the test set, showing how the model's raw probabilities get bucketed into \texttt{LOW}, \texttt{MEDIUM}, and \texttt{HIGH} categories.}
 \label{fig:risk_levels}
 \end{figure}
 
 % ============================= SYSTEM ARCHITECTURE ================
 \section{System Architecture and Implementation}
 
-FleetAI is implemented as a full-stack web application with three main components: a Python/FastAPI backend, a Next.js frontend dashboard, and a trained scikit-learn ML pipeline. Figure~\ref{fig:arch} provides a high-level architectural overview.
+FleetAI is built as a complete web application with three major parts: a Python backend powered by FastAPI, a frontend dashboard built with Next.js, and a trained scikit learn pipeline that does the actual prediction. Figure~\ref{fig:arch} shows how these pieces fit together.
 
 \begin{figure}[H]
 \centering
@@ -283,139 +276,57 @@ FleetAI is implemented as a full-stack web application with three main component
 \hspace{2em}$\downarrow$\\
 \texttt{JSON/CSV Response} $\longrightarrow$ \texttt{Frontend Dashboard}
 }}
-\caption{High-level system architecture of FleetAI. The frontend communicates with the backend via REST API calls. The backend loads a serialized ML pipeline and optionally integrates with Google Gemini for LLM-enhanced insights.}
+\caption{How the components of FleetAI interact. The user accesses the Next.js dashboard, which sends requests to the FastAPI backend. The backend loads the trained pipeline from a pickle file and optionally calls Google Gemini.}
 \label{fig:arch}
 \end{figure}
 
 \subsection{Backend (FastAPI)}
 
-The backend is built with FastAPI~\cite{fastapi} and follows a layered architecture organized into routes, services, schemas, and models.
+We chose FastAPI~\cite{fastapi} for the backend because it offers automatic request validation through Pydantic, built in OpenAPI documentation, and excellent performance for a Python framework. The code is organized into four layers: routes, services, schemas, and configuration.
 
-\subsubsection{Application Initialization (\texttt{main.py})}
-The FastAPI application instance is created with an asynchronous lifespan handler that:
-\begin{itemize}
-    \item Configures structured logging at startup.
-    \item Pre-loads the ML model into memory via \texttt{get\_prediction\_service()}, a singleton cached with \texttt{@lru\_cache(maxsize=1)}.
-    \item Registers CORS middleware allowing configurable origins (defaulting to \texttt{["*"]}).
-    \item Mounts two route modules: \texttt{predict\_router} and \texttt{vehicles\_router}.
-    \item Installs custom exception handlers for \texttt{ValueError} and generic exceptions.
-\end{itemize}
+\subsubsection{Application Initialization}
+The main application file (\texttt{main.py}) sets up an asynchronous lifespan handler that loads the ML model into memory when the server starts. The model is wrapped in a singleton service cached with Python's \texttt{@lru\_cache} decorator, so it only gets loaded once. The file also configures CORS middleware, registers the prediction and vehicle route modules, and installs custom error handlers that return structured JSON responses for both validation errors and unexpected exceptions.
 
-\subsubsection{Prediction Endpoint (\texttt{api/predict.py})}
-The \texttt{POST /predict} endpoint supports two input modes:
-\begin{enumerate}
-    \item \textbf{JSON body}: A single vehicle object or an array of objects. Supports wrapper keys \texttt{vehicle\_data} or \texttt{vehicles} for flexible ingestion.
-    \item \textbf{CSV file upload}: A multipart file upload with \texttt{field=file}. The CSV is parsed into rows and processed as a batch.
-\end{enumerate}
+\subsubsection{Prediction Endpoint}
+The \texttt{POST /predict} endpoint is flexible enough to handle two very different input styles. You can send a single vehicle as a JSON object, or you can send an array of vehicles, optionally wrapped inside a \texttt{vehicle\_data} or \texttt{vehicles} key. Alternatively, you can upload a CSV file as a multipart form submission. The endpoint figures out what it received and routes the request to the appropriate handler.
 
-Single requests return a \texttt{PredictionResponse} with one set of results. Batch requests include a \texttt{predictions[]} array with per-row items and a top-level summary representing the highest-risk row.
+For single requests, it returns one prediction with all the insight information. For batch requests, the response includes a \texttt{predictions[]} array with individual results for every row, plus a top level summary that represents the highest risk vehicle in the batch.
 
-\subsubsection{Prediction Service (\texttt{services/prediction\_service.py})}
-This is the core module (1,021 lines) responsible for all ML inference and insight generation. Key responsibilities:
+\subsubsection{Prediction Service}
+The prediction service file is the heart of the entire backend at 1,021 lines of Python. It handles several responsibilities.
 
-\begin{enumerate}
-    \item \textbf{Model loading}: Loads a serialized \texttt{sklearn.Pipeline} from a \texttt{.pkl} file using \texttt{joblib}. The pipeline encapsulates both preprocessing (StandardScaler~+~OneHotEncoder via ColumnTransformer) and the trained Random Forest classifier.
+First, it loads the serialized scikit learn pipeline from a pickle file using joblib. The pipeline contains both the preprocessing steps (scaling and encoding) and the trained Random Forest classifier, so a single \texttt{predict\_proba} call handles everything.
 
-    \item \textbf{Input normalization}: Accepts flexible input formats (5 minimum fields: \texttt{mileage}, \texttt{engine\_hours}, \texttt{fault\_codes}, \texttt{service\_history}, \texttt{usage\_patterns}) and synthesizes all 19 model features through derivation heuristics:
-    \begin{itemize}
-        \item Fault code strings are parsed and counted (\texttt{\_extract\_fault\_code\_count}).
-        \item Service history text (``good'', ``average'', ``poor'') is mapped to numeric scores (\texttt{\_derive\_service\_history\_score}).
-        \item Usage patterns are classified into bands: heavy, moderate, light (\texttt{\_classify\_usage}).
-        \item Missing fields (vehicle age, fuel efficiency, insurance premium, component conditions) are derived from available data using domain heuristics.
-    \end{itemize}
+Second, it normalizes whatever input it receives into the 19 features the model expects. The API only requires five fields (mileage, engine hours, fault codes, service history, and usage patterns), and the service derives everything else through domain heuristics. For example, it parses fault code strings like ``P0171,P0420'' and counts them, maps service history text (``good'', ``average'', ``poor'') to numeric scores, and classifies usage patterns into heavy, moderate, or light bands.
 
-    \item \textbf{Risk classification}: Model probability is mapped to risk levels using fixed thresholds:
-    \begin{itemize}
-        \item \texttt{LOW}: probability $< 0.30$
-        \item \texttt{MEDIUM}: $0.30 \leq$ probability $< 0.70$
-        \item \texttt{HIGH}: probability $\geq 0.70$
-    \end{itemize}
-    Confidence is computed as $\max(p, 1-p)$ where $p$ is the HIGH-risk class probability.
+Third, it maps the model's probability output to one of three risk levels: \texttt{LOW} for probabilities below 0.30, \texttt{MEDIUM} for probabilities between 0.30 and 0.70, and \texttt{HIGH} for anything at or above 0.70.
 
-    \item \textbf{Feature importance extraction}: Extracts model-level (global) feature importance by:
-    \begin{itemize}
-        \item Reading \texttt{feature\_importances\_} from the Random Forest model.
-        \item Mapping one-hot-encoded feature names back to their base categorical feature names.
-        \item Aggregating and normalizing importance across the top 10 features.
-    \end{itemize}
-\end{enumerate}
+Finally, it extracts global feature importance from the Random Forest by reading the \texttt{feature\_importances\_} attribute, mapping one hot encoded column names back to their original feature names, aggregating across categories, and returning the top 10 in normalized form.
 
-\subsubsection{Configuration (\texttt{config.py})}
-Uses \texttt{pydantic-settings} with the \texttt{FLEET\_} environment variable prefix. Configurable settings include:
+\subsubsection{Configuration}
+Application settings are managed through Pydantic Settings with the \texttt{FLEET\_} environment variable prefix. The model file path is automatically detected by searching three candidate locations, which makes the same code work both in local development and in a Vercel serverless deployment without any changes.
 
-\begin{table}[H]
-\centering
-\caption{Backend Configuration Variables}
-\label{tab:config}
-\begin{tabular}{lll}
-\toprule
-Variable & Default & Description \\
-\midrule
-\texttt{FLEET\_MODEL\_PATH} & auto-detected & Path to trained model \\
-\texttt{FLEET\_CORS\_ORIGINS} & \texttt{["*"]} & Allowed CORS origins \\
-\texttt{FLEET\_DEBUG} & \texttt{false} & Enable debug logging \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The model path is auto-detected by searching three candidate locations (relative to source, CWD, and parent), ensuring compatibility with both local development and Vercel serverless deployment.
-
-\subsubsection{Request/Response Schemas (\texttt{schemas/prediction.py})}
-All API contracts are defined using Pydantic \texttt{BaseModel} classes with strict typing:
-
-\begin{itemize}
-    \item \texttt{VehicleInput}: Accepts 21 optional fields with validation constraints (\texttt{ge=0} for numeric fields). Supports both minimal (5-field) and full (19-field) inputs.
-    \item \texttt{PredictionItem}: Core result with \texttt{risk\_level} (Literal type), \texttt{risk\_probability}, \texttt{confidence} (both constrained to [0,1]), \texttt{feature\_importance} dictionary, \texttt{insight\_summary}, typed \texttt{insight\_drivers} list, \texttt{recommendations} list, and \texttt{data\_warnings}.
-    \item \texttt{InsightDriver}: Structured driver with \texttt{factor}, \texttt{observed\_value}, \texttt{direction} (RISK\_UP | RISK\_DOWN | NEUTRAL), \texttt{impact} (0--1), and \texttt{explanation}.
-    \item \texttt{RecommendationItem}: Action item with \texttt{priority} (HIGH | MEDIUM | LOW), \texttt{action}, and \texttt{rationale}.
-    \item \texttt{PredictionResponse}: Extends \texttt{PredictionItem} with \texttt{total\_records}, optional \texttt{predictions[]} array (for batch), and \texttt{metadata} dictionary.
-\end{itemize}
+\subsubsection{Request and Response Schemas}
+Every field in every API request and response is typed using Pydantic models. The \texttt{VehicleInput} model accepts up to 21 optional fields with numeric validation constraints. The \texttt{PredictionItem} model defines the output structure including the risk level (as a Literal union type), probability and confidence scores (constrained to the 0 to 1 range), feature importance dictionary, insight summary text, typed insight driver objects, recommendation items, and data warnings. These schemas serve as both runtime validation and living documentation.
 
 \subsection{Insight Engine}
 
-The insight engine is a deterministic, rule-based system within \texttt{PredictionService} that generates row-specific explanations for each prediction. Unlike \textit{global} feature importance (model-wide), insight drivers provide \textit{local} operational interpretation.
+We wanted every prediction to come with an explanation, not just a number. The insight engine is a deterministic, rule based system embedded inside the prediction service that generates row specific explanations. This is fundamentally different from global feature importance, which tells you what matters across the entire model. Insight drivers tell you what matters \textit{for this specific vehicle}.
 
 \subsubsection{Driver Generation}
-For each prediction, nine drivers are evaluated across distinct input dimensions:
-\begin{enumerate}
-    \item \textbf{Reported issues}: Evaluates active fault code count against thresholds (0, 1, 2, $\geq$5).
-    \item \textbf{Service history}: Maps service score (0--10 scale) to risk direction.
-    \item \textbf{Service recency}: Evaluates days since last service ($<$120, 120--240, $\geq$240 days).
-    \item \textbf{Brake condition}: Maps component state (New/Good/Worn Out) to risk impact.
-    \item \textbf{Tire condition}: Same mapping as brake condition.
-    \item \textbf{Battery status}: Maps battery health (New/Good/Weak) to risk.
-    \item \textbf{Accident history}: Evaluates number of past incidents (0, 1, $\geq$2).
-    \item \textbf{Mileage}: Categorizes into bands ($<$120k, 120k--250k, $\geq$250k km).
-    \item \textbf{Usage profile}: Distinguishes commercial vs. individual operation.
-\end{enumerate}
-
-Each driver produces an \texttt{InsightDriver} object with a calibrated impact score (0.0--1.0) and a direction label. Drivers are sorted by impact score in descending order, and the top 6 are included in the response.
+For each prediction, the engine evaluates nine separate input dimensions and produces an \texttt{InsightDriver} object for each one. These dimensions are: reported issues (fault code count), service history (quality score), service recency (days since last visit), brake condition, tire condition, battery status, accident history, mileage band, and usage profile (commercial versus individual). Each driver gets a direction label (\texttt{RISK\_UP}, \texttt{RISK\_DOWN}, or \texttt{NEUTRAL}) and a calibrated impact score between 0.0 and 1.0. The drivers are sorted by impact and the top six are included in the final response.
 
 \subsubsection{Recommendation Generation}
-Recommendations are generated by mapping active RISK\_UP drivers to specific maintenance actions:
-\begin{itemize}
-    \item Fault codes $\rightarrow$ ``Run full diagnostic scan''
-    \item Extended service interval $\rightarrow$ ``Schedule preventive service within 7 days''
-    \item Degraded components $\rightarrow$ ``Inspect and service [component] immediately''
-    \item Poor service history $\rightarrow$ ``Move to shorter maintenance intervals''
-    \item High mileage $\rightarrow$ ``Increase preventive inspection frequency''
-\end{itemize}
-
-Recommendations are deduplicated and capped at 5 items. If no drivers trigger a recommendation, a default low-priority item is returned.
+When a driver has a \texttt{RISK\_UP} direction, the engine maps it to a specific maintenance action. Fault codes trigger a ``run full diagnostic scan'' recommendation. An extended service interval triggers ``schedule preventive service within 7 days.'' Degraded components trigger an inspection recommendation for that specific part. These are deduplicated and capped at five items. If nothing triggers, a low priority default recommendation is returned instead.
 
 \subsubsection{Data Quality Warnings}
-Input values are checked against expected ranges, generating warnings for:
-\begin{itemize}
-    \item Mileage $> 1{,}500{,}000$ km (outside training range)
-    \item Mileage-to-engine-hours ratio $> 2500$ (telemetry inconsistency)
-    \item Reported issues $\geq 15$ (immediate workshop inspection recommended)
-\end{itemize}
+The engine also checks whether input values fall within reasonable ranges and flags anything suspicious. For instance, mileage above 1,500,000 km gets flagged because it exceeds the training data range. A mileage to engine hours ratio above 2,500 raises a telemetry inconsistency warning. And if a vehicle reports 15 or more active issues, the system warns that immediate workshop inspection may be warranted.
 
-Table~\ref{tab:insight_example} shows a sample insight output for a high-risk vehicle.
+Table~\ref{tab:insight_example} shows what a typical insight output looks like for a high risk vehicle.
 
 \begin{table}[H]
 \centering
-\caption{Sample Insight Drivers for a HIGH Risk Prediction}
+\caption{Sample insight drivers for a HIGH risk prediction.}
 \label{tab:insight_example}
 \begin{tabular}{lccc}
 \toprule
@@ -431,187 +342,101 @@ Battery status & Good & NEUTRAL & 0.22 \\
 \end{tabular}
 \end{table}
 
-\subsection{GenAI Integration (\texttt{llm\_insight\_service.py})}
+\subsection{GenAI Integration}
 
-An optional LLM layer enhances predictions when configured with a Google API key. The \texttt{LLMInsightService} class:
+On top of the rule based insight engine, we built an optional LLM layer that can enhance the prediction output with a natural language summary. The \texttt{LLMInsightService} class uses LangChain's \texttt{ChatGoogleGenerativeAI} wrapper to call Google Gemini (specifically the \texttt{gemini\text{-}1.5\text{-}flash} model) at a low temperature of 0.2 for consistency.
 
-\begin{enumerate}
-    \item \textbf{Activation}: Enabled only when \texttt{ENABLE\_LLM\_INSIGHTS=true} and a valid \texttt{GOOGLE\_API\_KEY} is set. If not configured, the service is silently disabled.
-    \item \textbf{LLM Initialization}: Uses LangChain's \texttt{ChatGoogleGenerativeAI} wrapper with the Gemini model (default: \texttt{gemini-1.5-flash}) at temperature 0.2 for consistent output.
-    \item \textbf{Prompt Design}: Sends a system prompt positioning the model as a ``senior fleet maintenance analyst'' and a human prompt containing the full prediction context (risk level, probability, rule summary, normalized row, and drivers) as JSON.
-    \item \textbf{Response Parsing}: Extracts JSON from the LLM response, handling markdown code fences and partial JSON. Returns a \texttt{summary} string and up to 3 \texttt{recommendations}.
-    \item \textbf{Recommendation Merging}: LLM recommendations are prepended to rule-based recommendations, deduplicated by action text, and capped at 5 total items.
-    \item \textbf{Fallback}: If the LLM call fails, times out, or returns unparseable output, the system gracefully falls back to rule-based insights with zero degradation.
-    \item \textbf{Source Tracking}: The \texttt{insight\_source} field switches from \texttt{RULES} to \texttt{GENAI\_LLM} so the frontend can visually indicate the source.
-\end{enumerate}
+The service is activated only when two environment variables are set: \texttt{ENABLE\_LLM\_INSIGHTS=true} and a valid \texttt{GOOGLE\_API\_KEY}. If either is missing, the service silently does nothing and the system falls back to the rule based output with zero degradation.
+
+When active, the service sends a carefully crafted prompt that positions the LLM as a ``senior fleet maintenance analyst'' and provides the full prediction context as JSON, including risk level, probability, the rule based summary, the raw input data, and all the drivers. The response is parsed for a polished summary and up to three additional recommendations, which are merged with the rule based ones (prepended, deduplicated, and capped at five total).
+
+The \texttt{insight\_source} field in the response switches from \texttt{RULES} to \texttt{GENAI\_LLM} when the LLM contributes, so the frontend can visually indicate where the insights came from. If the LLM call fails or returns something that cannot be parsed, the system falls back to rules gracefully without the user ever noticing.
 
 \subsection{Frontend (Next.js)}
 
-The frontend is built with Next.js~\cite{nextjs} using TypeScript, TailwindCSS, and the shadcn/ui component library. It provides a modern, responsive dashboard for fleet managers.
+The frontend is a single page application built with Next.js~\cite{nextjs}, TypeScript, TailwindCSS, and the shadcn/ui component library.
 
-\subsubsection{Landing Page (\texttt{page.tsx})}
-A full-screen hero page with animated gradient backgrounds (WebGL shader), text generation effects, and a call-to-action button linking to the prediction workspace. Uses custom components:
-\begin{itemize}
-    \item \texttt{ShaderBackground}: WebGL-powered animated gradient background.
-    \item \texttt{TextGenerateEffect}: Character-by-character text reveal animation.
-    \item \texttt{HoverBorderGradient}: Animated border gradient on interactive buttons.
-    \item \texttt{AnimatedContent} / \texttt{FadeContent}: Scroll-triggered entrance animations.
-\end{itemize}
+\subsubsection{Landing Page}
+The landing page is designed to make a strong first impression. It features a full screen WebGL shader background with animated gradients, a title that reveals itself character by character using a text generation effect, and a call to action button with an animated border gradient. All of these animations are implemented as reusable React components (\texttt{ShaderBackground}, \texttt{TextGenerateEffect}, \texttt{HoverBorderGradient}, \texttt{AnimatedContent}, and \texttt{FadeContent}).
 
-\subsubsection{Prediction Page (\texttt{predict/page.tsx})}
-The 727-line prediction workspace is the core interface, providing:
+\subsubsection{Prediction Page}
+The prediction workspace at \texttt{/predict} is where the real work happens. It is about 727 lines of React code and offers two ways to submit data: a manual input form with five fields (mileage, engine hours, fault codes, service history, and usage patterns), or a drag and drop CSV file upload.
 
-\begin{enumerate}
-    \item \textbf{Manual Input Form}: Five fields (mileage, engine hours, fault codes, service history, usage patterns) with client-side validation, styled with custom Input and Textarea components.
+Both submission paths use TanStack Query mutations for state management, which handles loading indicators, error messages, and success callbacks cleanly. When a prediction comes back, the page renders a comprehensive results dashboard showing the risk level as a color coded badge, the insight source, a summary paragraph, probability and confidence numbers, data quality warnings, a batch preview table for CSV uploads, a detailed insight drivers table with direction badges and impact percentages, recommendation cards with priority labels, and a global feature importance table.
 
-    \item \textbf{CSV Upload}: Drag-and-drop file upload via \texttt{FileUpload} component with file type validation (\texttt{.csv} only).
+There is also a collapsible accordion section at the bottom that explains how the system works, what the risk thresholds mean, and the difference between global feature importance and row specific insight drivers.
 
-    \item \textbf{State Management}: Uses TanStack Query (React Query) \texttt{useMutation} for API calls with loading states, error handling, and success callbacks.
-
-    \item \textbf{Results Dashboard}: Upon successful prediction, displays:
-    \begin{itemize}
-        \item Risk level badge (color-coded: emerald/amber/rose)
-        \item Insight source indicator (Rule vs. GenAI)
-        \item Insight summary text
-        \item Risk probability and confidence metrics
-        \item Total records count
-        \item Data quality warnings (if any)
-        \item Batch preview table (for CSV uploads, limited to 8 rows)
-        \item Meaningful Insight table: drivers with factor name, observed value, direction badge (with arrow icons), and impact percentage
-        \item Recommended Actions cards with priority badges and rationale
-        \item Feature Importance table showing global model weights
-    \end{itemize}
-
-    \item \textbf{Informational Accordion}: Collapsible sections explaining input schema, performance characteristics, risk thresholds, and the distinction between global feature importance vs. row-specific insight drivers.
-\end{enumerate}
-
-\subsubsection{Service Layer (\texttt{predictionService.ts})}
-TypeScript service module providing two async functions:
-\begin{itemize}
-    \item \texttt{predictFromManualInput(payload)}: Sends JSON POST to \texttt{/predict}.
-    \item \texttt{predictFromCsvFile(file)}: Sends multipart POST with CSV file to \texttt{/predict}.
-\end{itemize}
-
-The API base URL is resolved from the \texttt{NEXT\_PUBLIC\_API\_BASE\_URL} environment variable, with automatic fallback to \texttt{localhost:8000} during development and the deployed Vercel backend URL in production.
-
-\subsubsection{Type Definitions (\texttt{types/prediction.ts})}
-Full TypeScript types mirror the backend Pydantic schemas, ensuring type-safe communication:
-\begin{itemize}
-    \item \texttt{ManualPredictionInput}: Input fields with correct types.
-    \item \texttt{PredictionItem}: Core result with literal union types for risk levels and directions.
-    \item \texttt{InsightDriver}: Driver structure matching the backend \texttt{InsightDriver} schema.
-    \item \texttt{RecommendationItem}: Action items with priority typing.
-    \item \texttt{PredictionResponse}: Extends PredictionItem with batch fields.
-\end{itemize}
+\subsubsection{Service Layer and Types}
+The frontend communicates with the backend through a TypeScript service module that provides two functions: \texttt{predictFromManualInput} for JSON submissions and \texttt{predictFromCsvFile} for multipart CSV uploads. The API base URL is automatically resolved from the \texttt{NEXT\_PUBLIC\_API\_BASE\_URL} environment variable, falling back to \texttt{localhost:8000} during development and the Vercel backend URL in production. All TypeScript type definitions mirror the backend Pydantic schemas exactly, giving us compile time safety across the full stack.
 
 \subsection{ML Pipeline}
 
-The trained model is serialized as a single scikit-learn \texttt{Pipeline} object (\texttt{vehicle\_maintenance\_pipeline.pkl}) that encapsulates:
+The trained model is saved as a single scikit learn \texttt{Pipeline} object in a pickle file. This pipeline contains two steps: a \texttt{ColumnTransformer} that applies \texttt{StandardScaler} to the 11 numerical features and \texttt{OneHotEncoder} to the 8 categorical features, followed by a tuned \texttt{RandomForestClassifier} with \texttt{max\_depth}=8, \texttt{min\_samples\_leaf}=10, \texttt{min\_samples\_split}=5, \texttt{n\_estimators}=100, and balanced class weights.
 
-\begin{enumerate}
-    \item \textbf{Preprocessor} (\texttt{ColumnTransformer}):
-    \begin{itemize}
-        \item \texttt{num}: \texttt{StandardScaler} applied to 11 numerical features.
-        \item \texttt{cat}: \texttt{OneHotEncoder} with \texttt{handle\_unknown='ignore'} applied to 8 categorical features.
-    \end{itemize}
-    \item \textbf{Model}: Tuned \texttt{RandomForestClassifier} with \texttt{max\_depth=8}, \texttt{min\_samples\_leaf=10}, \texttt{min\_samples\_split=5}, \texttt{n\_estimators=100}, and \texttt{class\_weight='balanced'}.
-\end{enumerate}
-
-The notebook \texttt{model/data\_processing.ipynb} contains the complete EDA, model training, evaluation, and plot generation workflow.
+Bundling preprocessing and prediction into a single serialized object means there is no risk of preprocessing mismatch between training and serving. The notebook \texttt{model/data\_processing.ipynb} contains the complete workflow from data exploration through model training and evaluation to plot generation.
 
 % ============================= DISCUSSION =========================
 \section{Discussion}
 
 \subsection{Model Selection}
 
-We selected Random Forest over Decision Tree and Gradient Boosting for deployment despite Decision Tree and Gradient Boosting achieving perfect accuracy on the full feature set. Random Forest provides more robust feature importance scores, generalizes better to unseen distributions, and is less prone to overfitting on a synthetic dataset where perfect accuracy is itself an artifact of data construction. The tuned hyperparameters (\texttt{max\_depth=8}, \texttt{min\_samples\_leaf=10}) further constrain tree complexity to improve generalization.
+We went with Random Forest for deployment even though Decision Tree and Gradient Boosting both hit perfect accuracy on the full feature set. The reasoning was straightforward: perfect accuracy on a synthetic dataset that contains leaking features is not a sign of a great model, it is a sign that the task is trivially solvable. We needed a model that would produce reasonable feature importance scores and generalize well if the underlying data distribution changed. Random Forest offers both of those qualities. The tuned hyperparameters (a maximum depth of 8 and a minimum leaf size of 10) further constrain the trees to prevent overfitting.
 
 \subsection{Data Leakage Analysis}
 
-The 30+ percentage point accuracy gap between the full and realistic feature sets (Tables~\ref{tab:full} and~\ref{tab:realistic}) demonstrates the critical importance of investigating feature-target relationships before reporting results. Component-condition features (\texttt{Brake\_Condition}, \texttt{Battery\_Status}, \texttt{Tire\_Condition}) are effectively proxies for the target variable---knowing that brakes are ``Worn Out'' already implies that maintenance is needed.
+The performance gap between Table~\ref{tab:full} and Table~\ref{tab:realistic} is enormous. On the full feature set, accuracy is at or above 96\% for every model. On the realistic set, it drops to the 70 to 80 percent range. This gap tells a clear story: the component condition features (\texttt{Brake\_Condition}, \texttt{Battery\_Status}, \texttt{Tire\_Condition}) are essentially proxies for the target variable. When the brakes are ``Worn Out,'' the vehicle always needs maintenance. That is not a prediction, it is a lookup.
 
-In a real deployment, these features might not be available at prediction time since knowing the exact brake condition already answers whether maintenance is needed. We retain the full feature set in the deployed pipeline because the project specification requires using the complete dataset, but document this limitation clearly so users understand the performance context.
+In a real world deployment, these features might not even be available at prediction time. If you already know the exact condition of the brakes, you probably do not need a model to tell you the vehicle needs servicing. We kept the full feature set in the deployed pipeline because the project specification called for it, but we documented this limitation honestly throughout the report and in the codebase.
 
 \subsection{Insight Engine Design}
 
-Raw risk scores lack actionable context. A fleet manager seeing ``HIGH risk, 87\% probability'' cannot determine next steps without understanding the underlying cause. Our insight engine addresses this by:
-\begin{enumerate}
-    \item Evaluating each input dimension against threshold-based rules to produce typed \texttt{InsightDriver} objects with direction (RISK\_UP, RISK\_DOWN, NEUTRAL) and calibrated impact weights.
-    \item Ranking drivers by impact and selecting the top six for inclusion in the response.
-    \item Generating prioritized \texttt{RecommendationItem} objects (HIGH, MEDIUM, LOW) based on which drivers are active.
-    \item Flagging data quality warnings when inputs fall outside expected ranges.
-\end{enumerate}
+Making predictions explainable was one of our top priorities from the start. We deliberately separated two concepts that are easy to confuse: global feature importance and row specific insight drivers.
 
-This rule-based layer runs deterministically with zero external dependencies, ensuring consistent behavior across all deployment environments. The separation between \textit{global feature importance} (model-wide) and \textit{row-specific insight drivers} (operational) is a key design decision that prevents confusion when users see high model importance for a feature that has a neutral value for their specific vehicle.
+Global feature importance comes from the Random Forest model itself and reflects which features the model considers most important \textit{across the entire training set}. Row specific insight drivers come from our rule engine and reflect what is happening with \textit{this particular vehicle}. The distinction matters because a feature can be globally important (like \texttt{Reported\_Issues}) while having a neutral or even protective value for a specific vehicle with zero fault codes.
+
+We chose a deterministic rule based approach over something like SHAP or LIME for two reasons. First, it runs instantly and does not require recomputing for each prediction. Second, the rules can encode domain knowledge (like the fact that 280 days without service is a red flag) that a purely data driven explanation method would miss.
 
 \subsection{GenAI Enhancement}
 
-The optional Gemini integration demonstrates a practical GenAI integration pattern:
-\begin{itemize}
-    \item The rule-based baseline provides a reliable, always-available foundation.
-    \item The LLM enhances but never replaces the core output.
-    \item Graceful degradation ensures the system works identically with or without LLM configuration.
-    \item The \texttt{insight\_source} field provides transparency about which system generated the insights.
-\end{itemize}
+The Gemini integration was designed from the ground up to be purely additive. The rule based engine provides the foundation, and the LLM can only enhance, never override. This means the system is equally useful with or without an API key configured.
 
-The prompt is specifically designed to produce structured JSON output, and the parsing logic handles common LLM output quirks (markdown fences, partial JSON) robustly.
+In practice, the LLM tends to produce more readable summaries and occasionally suggests actions that the rule engine does not cover, such as recommending a specific type of diagnostic tool. But since LLM outputs are not validated against any maintenance standard, we treat them as helpful suggestions rather than authoritative guidance.
 
 \subsection{Limitations}
 
-\begin{itemize}
-    \item The dataset is synthetic. Real fleet data would contain noise, missing values, and distribution shifts not present here.
-    \item Class imbalance is handled via balanced class weights. Techniques like SMOTE or cost-sensitive learning could be explored for potentially better minority-class recall.
-    \item The insight engine uses fixed thresholds tuned to this dataset. Adapting to different fleet profiles would require threshold calibration.
-    \item LLM-generated recommendations are not validated against domain-specific maintenance standards (e.g., OEM service manuals).
-    \item The deployed model includes leaking features. In a production scenario, component-condition features should be removed or replaced with sensor-derived equivalents available before maintenance diagnosis.
-\end{itemize}
+There are several limitations worth acknowledging. The dataset is entirely synthetic, which means the distributions, correlations, and noise patterns may not reflect what real fleet data looks like. The class imbalance was handled through balanced class weights, but techniques like SMOTE or focal loss might yield better results for the minority class. The insight engine thresholds were calibrated for this specific dataset and would need to be recalibrated for a different fleet. The LLM recommendations are not cross referenced against manufacturer service manuals. And as discussed extensively, the deployed model includes features that leak information about the target.
 
 % ============================= DEPLOYMENT =========================
 \section{Deployment}
 
-FleetAI is deployed on Vercel using a two-project monorepo strategy:
+FleetAI runs on Vercel using a two project setup that mirrors the monorepo structure.
 
 \subsection{Backend Deployment}
-\begin{itemize}
-    \item \textbf{Entrypoint}: \texttt{api/index.py} serves as the Vercel serverless function entrypoint. It configures \texttt{sys.path} to locate the \texttt{backend/} module and imports the FastAPI \texttt{app} instance.
-    \item \textbf{Routing}: \texttt{vercel.json} at the repository root routes all requests to the Python serverless function.
-    \item \textbf{Dependencies}: \texttt{requirements.txt} at the root specifies minimal dependencies: FastAPI, pandas, joblib, scikit-learn, python-multipart, pydantic, pydantic-settings, and numpy.
-    \item \textbf{Model artifact}: The \texttt{model/vehicle\_maintenance\_pipeline.pkl} file (serialized sklearn pipeline) is bundled with the deployment.
-    \item \textbf{Optional GenAI}: Set \texttt{ENABLE\_LLM\_INSIGHTS=true}, \texttt{GOOGLE\_API\_KEY}, and \texttt{GENAI\_MODEL} as Vercel environment variables to enable LLM insights.
-\end{itemize}
+The backend is deployed as a Vercel serverless function. The entrypoint file at \texttt{api/index.py} adds the \texttt{backend/} directory to \texttt{sys.path} and imports the FastAPI application. A \texttt{vercel.json} file at the repository root routes all incoming requests to this function. The trained model pickle file is included in the deployment bundle, and optional environment variables (\texttt{ENABLE\_LLM\_INSIGHTS}, \texttt{GOOGLE\_API\_KEY}, and \texttt{GENAI\_MODEL}) can be set in the Vercel dashboard to activate the Gemini integration.
 
 \subsection{Frontend Deployment}
-\begin{itemize}
-    \item \textbf{Vercel project root}: \texttt{frontend/} directory.
-    \item \textbf{Environment variable}: \texttt{NEXT\_PUBLIC\_API\_BASE\_URL} points to the deployed backend domain.
-    \item \textbf{Framework}: Vercel auto-detects Next.js and handles build/deploy.
-\end{itemize}
+The frontend is deployed as a separate Vercel project with its root set to the \texttt{frontend/} directory. Vercel automatically detects the Next.js framework and handles the build process. The only required environment variable is \texttt{NEXT\_PUBLIC\_API\_BASE\_URL}, which should point to the deployed backend domain.
 
 \subsection{Verification}
-After deployment, the following endpoints are verified:
-\begin{itemize}
-    \item \texttt{GET /health} --- returns \texttt{\{``status'': ``ok''\}} confirming the model is loaded.
-    \item \texttt{GET /docs} --- FastAPI auto-generated OpenAPI documentation.
-    \item \texttt{POST /predict} --- tested with sample JSON and CSV payloads.
-\end{itemize}
+After each deployment we verify that the health endpoint returns \texttt{\{``status'': ``ok''\}}, that the auto generated API documentation is accessible at \texttt{/docs}, and that a test prediction with sample JSON and CSV payloads returns the expected response structure.
 
 % ============================= TESTING ============================
 \section{Testing}
 
-The backend includes a comprehensive pytest test suite with 7 test files covering different aspects of the system:
+The backend comes with a comprehensive pytest test suite consisting of seven test files, summarized in Table~\ref{tab:tests}.
 
 \begin{table}[H]
 \centering
-\caption{Backend Test Suite Overview}
+\caption{Overview of the backend test suite.}
 \label{tab:tests}
 \begin{tabular}{ll}
 \toprule
 Test File & Coverage Area \\
 \midrule
 \texttt{test\_health.py} & Health endpoint verification \\
-\texttt{test\_predict.py} & Single-record JSON prediction \\
-\texttt{test\_predict\_contract.py} & Response schema contract validation \\
-\texttt{test\_batch\_predict.py} & CSV and multi-record batch prediction \\
+\texttt{test\_predict.py} & Single record JSON prediction \\
+\texttt{test\_predict\_contract.py} & Response schema contract checks \\
+\texttt{test\_batch\_predict.py} & CSV and multi record batch prediction \\
 \texttt{test\_validation.py} & Input validation and error handling \\
 \texttt{test\_risk\_mapping.py} & Risk threshold boundary testing \\
 \texttt{test\_vehicles.py} & Vehicle CRUD operations \\
@@ -619,7 +444,7 @@ Test File & Coverage Area \\
 \end{tabular}
 \end{table}
 
-Tests use \texttt{httpx.AsyncClient} for async endpoint testing and include test fixtures (\texttt{valid\_sample.csv}, \texttt{invalid\_rows.csv}) for CSV upload testing. The test suite is run with:
+The tests use \texttt{httpx.AsyncClient} for asynchronous endpoint testing and include fixture CSV files (\texttt{valid\_sample.csv} and \texttt{invalid\_rows.csv}) for testing upload behavior. To run the full suite:
 
 \begin{lstlisting}[language=bash]
 PYTHONPATH=backend pytest -q backend/tests
@@ -630,8 +455,8 @@ PYTHONPATH=backend pytest -q backend/tests
 
 \subsection{POST /predict (JSON)}
 
-\textbf{Request} (minimum fields):
-\begin{lstlisting}[language=json]
+A minimal request looks like this:
+\begin{lstlisting}
 {
   "mileage": 64000,
   "engine_hours": 1200,
@@ -641,8 +466,8 @@ PYTHONPATH=backend pytest -q backend/tests
 }
 \end{lstlisting}
 
-\textbf{Response shape}:
-\begin{lstlisting}[language=json]
+And the response has this shape:
+\begin{lstlisting}
 {
   "risk_level": "LOW",
   "risk_probability": 0.1751,
@@ -650,7 +475,7 @@ PYTHONPATH=backend pytest -q backend/tests
   "feature_importance": {
     "reported_issues": 0.3051, ...
   },
-  "insight_summary": "Estimated failure-risk
+  "insight_summary": "Estimated failure risk
     probability is 17.51% (LOW). ...",
   "insight_source": "RULES",
   "insight_drivers": [
@@ -665,7 +490,7 @@ PYTHONPATH=backend pytest -q backend/tests
   "recommendations": [
     {
       "priority": "HIGH",
-      "action": "Run full diagnostic scan ...",
+      "action": "Run full diagnostic scan",
       "rationale": "..."
     }
   ],
@@ -682,28 +507,31 @@ PYTHONPATH=backend pytest -q backend/tests
 \end{lstlisting}
 
 \subsection{POST /predict (CSV)}
-Multipart field: \texttt{file} (CSV). Required columns: \texttt{mileage}, \texttt{engine\_hours}, \texttt{fault\_codes}, \texttt{service\_history}, \texttt{usage\_patterns}. For batch requests, the response includes \texttt{predictions[]} and a top-level summary of the highest-risk row.
+For batch predictions, send a multipart form with a \texttt{file} field containing a CSV. Required columns are \texttt{mileage}, \texttt{engine\_hours}, \texttt{fault\_codes}, \texttt{service\_history}, and \texttt{usage\_patterns}. The response includes a \texttt{predictions[]} array and a top level summary of the highest risk row.
 
 \subsection{Risk Thresholds}
 \begin{itemize}
-    \item \texttt{LOW}: probability $< 0.30$
-    \item \texttt{MEDIUM}: $0.30 \leq$ probability $< 0.70$
-    \item \texttt{HIGH}: probability $\geq 0.70$
+    \item \texttt{LOW}: probability below 0.30
+    \item \texttt{MEDIUM}: probability from 0.30 up to 0.70
+    \item \texttt{HIGH}: probability at or above 0.70
 \end{itemize}
 
 % ============================= CONCLUSION =========================
 \section{Conclusion}
 
-We presented FleetAI, a vehicle maintenance prediction system that combines ML classification with structured insight generation and optional GenAI enhancement. Our analysis of the Kaggle Vehicle Maintenance dataset uncovered significant data leakage from component-condition features, and we reported results on both the full and realistic feature sets for transparency. A tuned Random Forest classifier achieves 94.07\% accuracy and is deployed as a REST API supporting single JSON and batch CSV predictions. Each prediction is enriched with insight drivers, actionable recommendations, and data quality warnings through a deterministic rule engine. An optional Gemini LLM layer enhances natural-language summaries when configured. The system is production-deployed on Vercel with a modern Next.js dashboard featuring animated UI components and responsive design.
+We built FleetAI, a vehicle maintenance prediction system that goes beyond just outputting a risk score. Every prediction comes with structured insight drivers, prioritized recommendations, and data quality warnings. An optional Gemini LLM layer adds polished natural language summaries when configured, while the rule based engine ensures the system is always useful even without any external API.
 
-Future work includes:
-\begin{itemize}
-    \item RAG-based retrieval of maintenance manuals via Pinecone for contextually grounded recommendations.
-    \item Agentic workflow orchestration using LangGraph for multi-step analysis.
-    \item Persistent vehicle health tracking with PostgreSQL via Piccolo ORM (table definitions already exist in the codebase).
-    \item Model retraining with real-world fleet data and SMOTE for improved class imbalance handling.
-    \item Mobile application for field technicians.
-\end{itemize}
+Our analysis of the Kaggle dataset uncovered significant data leakage through component condition features. We reported this transparently and showed results on both the full and clean feature sets. The tuned Random Forest classifier achieves 94.07\% accuracy on the test set and is deployed as a REST API supporting both JSON and CSV inputs, with a modern Next.js dashboard providing an intuitive interface for fleet managers.
+
+Looking ahead, we plan to explore several directions:
+
+\begin{enumerate}
+    \item Retrieval augmented generation using maintenance manuals stored in Pinecone, so the LLM can ground its recommendations in manufacturer documentation.
+    \item Agentic workflow orchestration using LangGraph for multi step analysis tasks.
+    \item Persistent vehicle health tracking through PostgreSQL using Piccolo ORM, for which table definitions already exist in the codebase.
+    \item Retraining with real world fleet data and techniques like SMOTE for improved minority class performance.
+    \item A mobile application for field technicians who need to check vehicle status on the go.
+\end{enumerate}
 
 % ============================= REFERENCES =========================
 \begin{thebibliography}{9}
@@ -716,17 +544,17 @@ T.~P.~Carvalho, F.~A.~A.~M.~N.~Soares, R.~Vita, R.~da~P.~Francisco, J.~P.~Basto,
 \bibitem{susto2015}
 G.~A.~Susto, A.~Schirru, S.~Pampuri, S.~McLoone, and A.~Beghi,
 ``Machine learning for predictive maintenance: A multiple classifier approach,''
-\textit{IEEE Trans. Industrial Informatics}, vol.~11, no.~3, pp.~812--820, 2015.
+\textit{IEEE Trans. Industrial Informatics}, vol.~11, no.~3, pp.~812\textendash 820, 2015.
 
 \bibitem{canizo2017}
 M.~Canizo, E.~Onieva, A.~Conde, S.~Charramendieta, and S.~Trujillo,
-``Real-time predictive maintenance for wind turbines using Big Data frameworks,''
-in \textit{Proc. IEEE Int. Conf. Prognostics and Health Management}, 2017, pp.~70--77.
+``Real time predictive maintenance for wind turbines using big data frameworks,''
+in \textit{Proc. IEEE Int. Conf. Prognostics and Health Management}, 2017, pp.~70\textendash 77.
 
 \bibitem{brown2024}
 A.~Brown, J.~Liu, and S.~Patel,
-``LLM-augmented maintenance reporting: Improving operator comprehension through generated summaries,''
-in \textit{Proc. IEEE Int. Conf. Industrial Technology}, 2024, pp.~1--6.
+``LLM augmented maintenance reporting: Improving operator comprehension through generated summaries,''
+in \textit{Proc. IEEE Int. Conf. Industrial Technology}, 2024, pp.~1\textendash 6.
 
 \bibitem{kaggle_dataset}
 C.~Dulaj,
@@ -735,8 +563,8 @@ Kaggle, 2024. [Online]. Available: \url{https://www.kaggle.com/datasets/chavindu
 
 \bibitem{sklearn}
 F.~Pedregosa \textit{et al.},
-``Scikit-learn: Machine learning in Python,''
-\textit{J. Machine Learning Research}, vol.~12, pp.~2825--2830, 2011.
+``Scikit learn: Machine learning in Python,''
+\textit{J. Machine Learning Research}, vol.~12, pp.~2825\textendash 2830, 2011.
 
 \bibitem{fastapi}
 S.~Ramirez,
@@ -755,10 +583,10 @@ Vercel Inc.,
 
 \section{GitHub Repository Information}
 
-This appendix provides details regarding the project's GitHub repository and file structure for reproducibility.
+This appendix documents the project's repository layout and technology choices for anyone who wants to reproduce or extend our work.
 
 \subsection{Repository Link}
-The complete source code, trained models, and documentation are available at:
+All source code, the trained model, and project documentation are available at:
 
 \begin{center}
 \textbf{\url{https://github.com/GreenHacker420/Vehicle_AIML}}
@@ -769,27 +597,27 @@ The complete source code, trained models, and documentation are available at:
 \begin{lstlisting}
 Vehicle_AIML/
 |-- api/
-|   `-- index.py              # Vercel backend entrypoint
+|   `-- index.py              # Vercel entrypoint
 |-- backend/
 |   |-- app/
 |   |   |-- api/
-|   |   |   |-- predict.py    # Prediction route handler
+|   |   |   |-- predict.py    # Prediction routes
 |   |   |   `-- vehicles.py   # Vehicle CRUD routes
 |   |   |-- models/
-|   |   |   |-- prediction_record.py  # ORM model
-|   |   |   `-- vehicle.py            # ORM model
+|   |   |   |-- prediction_record.py
+|   |   |   `-- vehicle.py
 |   |   |-- schemas/
-|   |   |   |-- prediction.py # API schemas (Pydantic)
-|   |   |   `-- vehicle.py    # Vehicle schemas
+|   |   |   |-- prediction.py # API schemas
+|   |   |   `-- vehicle.py
 |   |   |-- services/
-|   |   |   |-- prediction_service.py # Core ML service
-|   |   |   `-- llm_insight_service.py # GenAI service
-|   |   |-- config.py         # Settings (pydantic-settings)
-|   |   |-- errors.py         # Exception handlers
-|   |   |-- logging_config.py # Structured logging
-|   |   `-- main.py           # FastAPI app entry
+|   |   |   |-- prediction_service.py
+|   |   |   `-- llm_insight_service.py
+|   |   |-- config.py
+|   |   |-- errors.py
+|   |   |-- logging_config.py
+|   |   `-- main.py
 |   |-- tests/
-|   |   |-- conftest.py       # Test fixtures
+|   |   |-- conftest.py
 |   |   |-- test_predict.py
 |   |   |-- test_predict_contract.py
 |   |   |-- test_batch_predict.py
@@ -807,18 +635,18 @@ Vehicle_AIML/
 |   |   |   |-- page.tsx      # Landing page
 |   |   |   |-- predict/
 |   |   |   |   `-- page.tsx  # Prediction workspace
-|   |   |   `-- layout.tsx    # App layout
+|   |   |   `-- layout.tsx
 |   |   |-- components/
 |   |   |   |-- AnimatedContent.tsx
 |   |   |   |-- FadeContent.tsx
 |   |   |   |-- StarBorder.tsx
 |   |   |   `-- ui/           # shadcn/ui components
 |   |   |-- providers/
-|   |   |   `-- query-provider.tsx  # TanStack Query
+|   |   |   `-- query-provider.tsx
 |   |   |-- services/
-|   |   |   `-- predictionService.ts  # API client
+|   |   |   `-- predictionService.ts
 |   |   |-- types/
-|   |   |   `-- prediction.ts  # TypeScript types
+|   |   |   `-- prediction.ts
 |   |   `-- lib/
 |   |       |-- riskBadge.ts
 |   |       |-- sortFeatureImportance.ts
@@ -826,10 +654,10 @@ Vehicle_AIML/
 |   |       `-- validationMessages.ts
 |   |-- package.json
 |   |-- tsconfig.json
-|   `-- vercel.json           # Frontend deploy config
+|   `-- vercel.json
 |-- model/
-|   |-- data_processing.ipynb  # EDA & training notebook
-|   |-- vehicle_maintenance_pipeline.pkl  # Trained model
+|   |-- data_processing.ipynb
+|   |-- vehicle_maintenance_pipeline.pkl
 |   |-- confusion_matrix.png
 |   |-- roc_curve.png
 |   |-- feature_importance.png
@@ -839,37 +667,18 @@ Vehicle_AIML/
 |   |-- categorical_distributions.png
 |   |-- target_distribution.png
 |   `-- risk_levels.png
-|-- docs/                      # Project documentation
-|-- prd.md                     # Product Requirements Document
-|-- readme.md                  # Project README
-|-- requirements.txt           # Vercel backend dependencies
-`-- vercel.json                # Backend routing config
+|-- docs/
+|-- prd.md
+|-- readme.md
+|-- requirements.txt
+`-- vercel.json
 \end{lstlisting}
 
-\subsection{Description of Key Components}
-
-\begin{itemize}
-    \item \textbf{api/index.py}: Vercel serverless function entrypoint that configures \texttt{sys.path} and imports the FastAPI application. Includes debugging output for deployment troubleshooting.
-    \item \textbf{backend/app/api/}: FastAPI route handlers for prediction (\texttt{POST /predict} supporting JSON and CSV) and vehicle CRUD endpoints (\texttt{POST/GET /vehicles}).
-    \item \textbf{backend/app/schemas/}: Pydantic models defining the complete API contract, including \texttt{VehicleInput} (21 optional fields), \texttt{PredictionItem}, \texttt{InsightDriver}, \texttt{RecommendationItem}, and \texttt{PredictionResponse}.
-    \item \textbf{backend/app/services/prediction\_service.py}: The 1,021-line core module containing model loading, input normalization with domain heuristics, feature derivation, risk classification, the rule-based insight engine (9 driver generators), recommendation generation, data quality warnings, and feature importance extraction.
-    \item \textbf{backend/app/services/llm\_insight\_service.py}: Optional Gemini integration via LangChain for generating enhanced natural-language insight summaries with structured JSON output parsing and graceful fallback.
-    \item \textbf{backend/app/config.py}: Configuration via \texttt{pydantic-settings} with automatic model path detection across local and Vercel environments.
-    \item \textbf{backend/app/models/}: Piccolo ORM table definitions (\texttt{Vehicle}, \texttt{PredictionRecord}) prepared for future PostgreSQL persistence.
-    \item \textbf{backend/tests/}: Comprehensive pytest suite with 7 test files covering health checks, single/batch prediction, response contract validation, input validation, risk threshold mapping, and vehicle CRUD.
-    \item \textbf{frontend/src/app/page.tsx}: Landing page with WebGL shader background, animated text generation, and gradient border buttons.
-    \item \textbf{frontend/src/app/predict/page.tsx}: 727-line prediction workspace with manual input form, CSV upload, TanStack Query mutations, and a comprehensive results dashboard with insight drivers, recommendations, and feature importance tables.
-    \item \textbf{frontend/src/services/predictionService.ts}: TypeScript API client with automatic base URL resolution and structured error parsing.
-    \item \textbf{frontend/src/types/prediction.ts}: TypeScript type definitions mirroring backend Pydantic schemas for type-safe frontend development.
-    \item \textbf{model/data\_processing.ipynb}: Jupyter notebook containing the complete data science workflow: EDA, preprocessing, model training, hyperparameter tuning, evaluation, and visualization generation.
-    \item \textbf{model/vehicle\_maintenance\_pipeline.pkl}: Serialized scikit-learn Pipeline containing the ColumnTransformer preprocessor and tuned RandomForestClassifier.
-\end{itemize}
-
-\subsection{Technology Stack Summary}
+\subsection{Technology Stack}
 
 \begin{table}[H]
 \centering
-\caption{Complete Technology Stack}
+\caption{Technologies used in FleetAI.}
 \label{tab:techstack}
 \begin{tabular}{lll}
 \toprule
@@ -880,20 +689,19 @@ UI Components & shadcn/ui + TailwindCSS & Latest \\
 State Management & TanStack Query & v5 \\
 Backend & FastAPI & 0.115.8 \\
 Validation & Pydantic & 2.10.6 \\
-ML Framework & scikit-learn & 1.7.2 \\
+ML Framework & scikit learn & 1.7.2 \\
 Data Processing & pandas & 2.2.3 \\
-Model Serialization & joblib & 1.4.2 \\
-GenAI Integration & LangChain + Gemini & 0.3.27 \\
-ORM (future) & Piccolo ORM & 1.24.2 \\
+Serialization & joblib & 1.4.2 \\
+GenAI & LangChain + Gemini & 0.3.27 \\
+ORM (planned) & Piccolo ORM & 1.24.2 \\
 Testing & pytest + httpx & 8.3.4 \\
-Deployment & Vercel (Serverless) & --- \\
+Hosting & Vercel (Serverless) & N/A \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\subsection{Dependencies}
+\subsection{Backend Dependencies}
 
-\textbf{Backend} (\texttt{requirements.txt}):
 \begin{lstlisting}
 fastapi==0.115.8
 uvicorn[standard]==0.34.0
@@ -910,11 +718,9 @@ pytest==8.3.4
 httpx==0.28.1
 \end{lstlisting}
 
-\textbf{Frontend} (\texttt{package.json}): Next.js, React, TailwindCSS, shadcn/ui components, TanStack Query, Lucide Icons, Framer Motion.
-
 \subsection{Local Development Setup}
 
-\textbf{Backend}:
+To run the backend locally:
 \begin{lstlisting}[language=bash]
 cd backend
 python -m venv .venv
@@ -924,7 +730,7 @@ PYTHONPATH=backend uvicorn app.main:app \
   --reload --host 0.0.0.0 --port 8000
 \end{lstlisting}
 
-\textbf{Frontend}:
+To run the frontend locally:
 \begin{lstlisting}[language=bash]
 cd frontend
 npm install
@@ -933,6 +739,6 @@ http://localhost:8000" > .env.local
 npm run dev
 \end{lstlisting}
 
-Access the application at \texttt{http://localhost:3000} (landing page) and \texttt{http://localhost:3000/predict} (prediction workspace).
+The application will be available at \texttt{http://localhost:3000} for the landing page and \texttt{http://localhost:3000/predict} for the prediction workspace.
 
 \end{document}
