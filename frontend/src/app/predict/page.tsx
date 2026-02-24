@@ -290,7 +290,7 @@ export default function PredictPage() {
       <div className="relative z-20 mx-auto flex w-full max-w-[1800px] flex-col gap-6 px-4 pt-8 md:px-8 md:pt-10">
         <AnimatedContent distance={70}>
           <Card className="border-white/25 bg-white/82 shadow-[0_30px_80px_rgba(15,23,42,0.35)] backdrop-blur-xl">
-            <CardContent className="space-y-4 p-6 text-center md:p-10">
+            <CardContent className="space-y-4 p-6 text-center md:p-8">
               <Badge className="mx-auto w-fit border-slate-300 bg-slate-100 px-3 py-1 text-[11px] uppercase tracking-[0.2em] text-slate-700">
                 Predict
               </Badge>
@@ -309,10 +309,10 @@ export default function PredictPage() {
           </Card>
         </AnimatedContent>
 
-        <section className="grid w-full gap-6 lg:grid-cols-2">
-          <AnimatedContent distance={50} delay={0.05}>
-            <BackgroundGradient className="rounded-2xl">
-              <Card className="border-slate-200/90 bg-white/94 shadow-xl shadow-cyan-200/45">
+        <section className="grid w-full gap-4 lg:grid-cols-2 lg:auto-rows-fr">
+          <AnimatedContent distance={50} delay={0.05} className="h-full">
+            <BackgroundGradient className="h-full rounded-2xl">
+              <Card className="flex h-full flex-col border-slate-200/90 bg-white/94 shadow-xl shadow-cyan-200/45">
                 <CardHeader>
                   <CardTitle className="text-slate-900">Manual Input</CardTitle>
                   <CardDescription className="text-slate-600">
@@ -320,7 +320,7 @@ export default function PredictPage() {
                     service history, usage patterns. Press Ctrl+Enter to predict.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="flex flex-1 flex-col justify-between space-y-3">
                   <Input
                     type="number"
                     min={0}
@@ -391,16 +391,16 @@ export default function PredictPage() {
             </BackgroundGradient>
           </AnimatedContent>
 
-          <AnimatedContent distance={50} delay={0.1}>
-            <BackgroundGradient className="rounded-2xl">
-              <Card className="border-slate-200/90 bg-white/94 shadow-xl shadow-orange-200/30">
+          <AnimatedContent distance={50} delay={0.1} className="h-full">
+            <BackgroundGradient className="h-full rounded-2xl">
+              <Card className="flex h-full flex-col border-slate-200/90 bg-white/94 shadow-xl shadow-orange-200/30">
                 <CardHeader>
                   <CardTitle className="text-slate-900">CSV Upload</CardTitle>
                   <CardDescription className="text-slate-600">
                     Upload a CSV with required columns for batch prediction.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="flex flex-1 flex-col justify-between space-y-4">
                   <FileUpload onChange={handleCsvChange} />
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
                     <div className="flex items-center justify-between">
@@ -477,9 +477,9 @@ export default function PredictPage() {
 
         {result && (
           <AnimatedContent distance={44}>
-            <section className="space-y-6" id="results">
-              <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]">
-                <Card className="border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
+            <section className="space-y-4" id="results">
+              <div className="grid gap-4 lg:grid-cols-2 lg:auto-rows-fr">
+                <Card className="flex h-full flex-col border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
                   <CardHeader>
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <CardTitle className="text-slate-900">
@@ -522,7 +522,7 @@ export default function PredictPage() {
                       </button>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="flex flex-1 flex-col space-y-4">
                     <div className="grid gap-3 sm:grid-cols-3">
                       <Card className="border-slate-200 bg-gradient-to-br from-slate-50 to-white shadow-sm">
                         <CardContent className="space-y-1 py-5">
@@ -630,77 +630,79 @@ export default function PredictPage() {
                   </CardContent>
                 </Card>
 
-              <Card className="border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
+                <Card className="flex h-full flex-col border-slate-200 bg-white/95 shadow-xl shadow-slate-200/40">
                   <CardHeader>
                     <CardTitle className="text-slate-900">
                       Meaningful Insight
                     </CardTitle>
                     <CardDescription className="text-slate-600">
-                    Row-specific drivers based on normalized inputs and
-                    maintenance heuristics.
+                      Row-specific drivers based on normalized inputs and
+                      maintenance heuristics.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-slate-200 hover:bg-transparent">
-                          <TableHead className="text-slate-600">Driver</TableHead>
-                          <TableHead className="text-slate-600">Observed</TableHead>
-                          <TableHead className="text-right text-slate-600">
-                            Impact
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {insightRows.length === 0 && (
-                          <TableRow className="border-slate-200">
-                            <TableCell className="text-slate-600">
-                              No insight drivers returned.
-                            </TableCell>
-                            <TableCell />
-                            <TableCell />
+                  <CardContent className="flex flex-1 flex-col space-y-4">
+                    <div className="flex-1">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-slate-200 hover:bg-transparent">
+                            <TableHead className="text-slate-600">Driver</TableHead>
+                            <TableHead className="text-slate-600">Observed</TableHead>
+                            <TableHead className="text-right text-slate-600">
+                              Impact
+                            </TableHead>
                           </TableRow>
-                        )}
-                        {insightRows.map((driver) => (
-                          <TableRow
-                            key={`${driver.factor}-${driver.observed_value}`}
-                            className="border-slate-200 transition-colors hover:bg-slate-50"
-                          >
-                            <TableCell className="space-y-1 text-slate-900">
-                              <p className="font-medium">{driver.factor}</p>
-                              <p className="text-xs text-slate-600">
-                                {driver.explanation}
-                              </p>
-                            </TableCell>
-                            <TableCell className="text-slate-700">
-                              {driver.observed_value}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="inline-flex items-center gap-2">
-                                <Badge className={DRIVER_BADGE_STYLES[driver.direction]}>
-                                  {driver.direction === "RISK_UP" && (
-                                    <ArrowUpRight className="mr-1 h-3 w-3" />
-                                  )}
-                                  {driver.direction === "RISK_DOWN" && (
-                                    <ArrowDownRight className="mr-1 h-3 w-3" />
-                                  )}
-                                  {driver.direction === "NEUTRAL" && (
-                                    <Info className="mr-1 h-3 w-3" />
-                                  )}
-                                  {driver.direction.replace("_", " ")}
-                                </Badge>
-                                <span className="text-sm text-slate-700">
-                                  {(driver.impact * 100).toFixed(0)}%
-                                </span>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {insightRows.length === 0 && (
+                            <TableRow className="border-slate-200">
+                              <TableCell className="text-slate-600">
+                                No insight drivers returned.
+                              </TableCell>
+                              <TableCell />
+                              <TableCell />
+                            </TableRow>
+                          )}
+                          {insightRows.map((driver) => (
+                            <TableRow
+                              key={`${driver.factor}-${driver.observed_value}`}
+                              className="border-slate-200 transition-colors hover:bg-slate-50"
+                            >
+                              <TableCell className="space-y-1 text-slate-900">
+                                <p className="font-medium">{driver.factor}</p>
+                                <p className="text-xs text-slate-600">
+                                  {driver.explanation}
+                                </p>
+                              </TableCell>
+                              <TableCell className="text-slate-700">
+                                {driver.observed_value}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="inline-flex items-center gap-2">
+                                  <Badge className={DRIVER_BADGE_STYLES[driver.direction]}>
+                                    {driver.direction === "RISK_UP" && (
+                                      <ArrowUpRight className="mr-1 h-3 w-3" />
+                                    )}
+                                    {driver.direction === "RISK_DOWN" && (
+                                      <ArrowDownRight className="mr-1 h-3 w-3" />
+                                    )}
+                                    {driver.direction === "NEUTRAL" && (
+                                      <Info className="mr-1 h-3 w-3" />
+                                    )}
+                                    {driver.direction.replace("_", " ")}
+                                  </Badge>
+                                  <span className="text-sm text-slate-700">
+                                    {(driver.impact * 100).toFixed(0)}%
+                                  </span>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
 
                     {recommendationRows.length > 0 && (
-                      <Card className="border-slate-200 bg-slate-50">
+                      <Card className="border-slate-200 bg-slate-50 mt-auto">
                         <CardHeader className="pb-2">
                           <CardTitle className="text-base text-slate-900">
                             Recommended Actions
