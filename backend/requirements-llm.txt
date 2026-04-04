@@ -1,0 +1,4 @@
+# Optional GenAI dependencies — only needed when ENABLE_LLM_INSIGHTS=true
+# Install with: pip install -r requirements-llm.txt
+langchain==0.3.27
+langchain-google-genai==2.1.8

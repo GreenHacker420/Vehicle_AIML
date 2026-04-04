@@ -20,7 +20,6 @@ from app.schemas.prediction import (
     RecommendationItem,
     VehicleInput,
 )
-from app.services.llm_insight_service import LLMInsightService
 
 
 class PredictionService:
@@ -68,7 +67,13 @@ class PredictionService:
             getattr(self.pipeline, "feature_names_in_", self._MODEL_COLUMNS_FALLBACK)
         )
         self._feature_importance = self._extract_feature_importance()
-        self.llm_insight_service = LLMInsightService()
+
+        import os
+        if os.getenv("ENABLE_LLM_INSIGHTS", "false").strip().lower() in {"1", "true", "yes", "on"}:
+            from app.services.llm_insight_service import LLMInsightService
+            self.llm_insight_service = LLMInsightService()
+        else:
+            self.llm_insight_service = None
 
     async def parse_csv_upload(self, file: UploadFile) -> list[dict[str, Any]]:
         if not file.filename:
@@ -160,12 +165,16 @@ class PredictionService:
         insight = self._generate_insight_bundle(row=row, probability=probability, risk_level=risk_level)
         insight_source = "RULES"
 
-        llm_payload = self.llm_insight_service.generate(
-            risk_level=risk_level,
-            risk_probability=probability,
-            rule_summary=insight["summary"],
-            row=row,
-            drivers=[driver.model_dump() for driver in insight["drivers"]],
+        llm_payload = (
+            self.llm_insight_service.generate(
+                risk_level=risk_level,
+                risk_probability=probability,
+                rule_summary=insight["summary"],
+                row=row,
+                drivers=[driver.model_dump() for driver in insight["drivers"]],
+            )
+            if self.llm_insight_service is not None
+            else None
         )
         if llm_payload:
             insight_source = "GENAI_LLM"
