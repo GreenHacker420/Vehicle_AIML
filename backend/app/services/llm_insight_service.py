@@ -15,6 +15,13 @@ class LLMInsightService:
     """
 
     def __init__(self) -> None:
+        """Initialise the service.
+
+        Reads ``ENABLE_LLM_INSIGHTS``, ``GOOGLE_API_KEY`` / ``GENAI_API_KEY``,
+        and ``GENAI_MODEL`` from the environment.  The LangChain client is only
+        imported and instantiated when the feature flag is enabled *and* an API
+        key is present, so the package is not required for normal operation.
+        """
         self.enabled = os.getenv("ENABLE_LLM_INSIGHTS", "false").strip().lower() in {
             "1",
             "true",
@@ -41,6 +48,7 @@ class LLMInsightService:
 
     @property
     def available(self) -> bool:
+        """Return True if the LLM client was initialised successfully."""
         return self._llm is not None
 
     def generate(
@@ -52,6 +60,12 @@ class LLMInsightService:
         row: dict[str, Any],
         drivers: list[dict[str, Any]],
     ) -> dict[str, Any] | None:
+        """Generate an LLM-enhanced insight payload for a single prediction.
+
+        Sends the rule-based summary and structured drivers to Gemini and
+        returns a dict with ``summary`` (str) and ``recommendations`` (list).
+        Returns ``None`` if the LLM is unavailable or the call fails.
+        """
         if not self.available:
             return None
 
@@ -117,6 +131,7 @@ class LLMInsightService:
 
     @staticmethod
     def _coerce_content(content: Any) -> str:
+        """Normalise an LLM response content value to a plain string."""
         if isinstance(content, str):
             return content
         if isinstance(content, list):
@@ -135,6 +150,11 @@ class LLMInsightService:
 
     @staticmethod
     def _parse_json_block(text: str) -> dict[str, Any] | None:
+        """Extract and parse the first JSON object from *text*.
+
+        Handles responses wrapped in markdown code fences (```json ... ```).
+        Returns ``None`` if no valid JSON object is found.
+        """
         cleaned = text.strip()
         if cleaned.startswith("```"):
             cleaned = re.sub(r"^```(?:json)?", "", cleaned).strip()

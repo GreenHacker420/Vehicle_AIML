@@ -16,6 +16,16 @@ async def predict(
     file: UploadFile | None = File(default=None),
     service: PredictionService = Depends(get_prediction_service),
 ) -> PredictionResponse:
+    """Unified prediction endpoint accepting JSON or multipart CSV.
+
+    - JSON body: single vehicle object, ``vehicle_data`` wrapper, ``vehicles``
+      array, or a bare JSON array.
+    - Multipart: ``file`` field containing a ``.csv`` with the required columns.
+
+    Returns a :class:`PredictionResponse` with risk level, probability,
+    confidence, feature importance, insight drivers, recommendations, and
+    optional data-quality warnings.
+    """
     if file is not None:
         rows = await service.parse_csv_upload(file)
         return service.predict_many(rows)
@@ -35,6 +45,13 @@ async def predict(
 
 
 def _unwrap_payload(body: Any) -> dict[str, Any] | list[dict[str, Any]]:
+    """Normalise the raw JSON body into a single dict or list of dicts.
+
+    Supports three envelope formats in addition to a bare object/array:
+    - ``{"vehicle_data": {...}}`` or ``{"vehicle_data": [...]}"
+    - ``{"vehicles": [...]}"
+    - bare object ``{...}`` or bare array ``[...]"
+    """
     if isinstance(body, list):
         return [_ensure_dict(item) for item in body]
     if not isinstance(body, dict):
@@ -62,6 +79,7 @@ def _unwrap_payload(body: Any) -> dict[str, Any] | list[dict[str, Any]]:
 
 
 def _ensure_dict(payload: Any) -> dict[str, Any]:
+    """Raise 422 if *payload* is not a dict; otherwise return it unchanged."""
     if not isinstance(payload, dict):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

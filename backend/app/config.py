@@ -24,6 +24,13 @@ def _find_model_file() -> Path:
 
 
 class Settings(BaseSettings):
+    """Application settings loaded from environment variables.
+
+    All variables are prefixed with ``FLEET_`` (e.g. ``FLEET_DEBUG=true``).
+    ``model_path`` is auto-discovered across several candidate locations so the
+    same codebase works both locally and on Vercel serverless.
+    """
+
     model_config = {"env_prefix": "FLEET_"}
 
     model_path: Path = _find_model_file()
