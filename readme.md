@@ -1,13 +1,64 @@
-# FleetAI - Vehicle Maintenance Prediction System (Milestone-1)
+# FleetAI — Vehicle Maintenance Prediction System
 
-Milestone-1 delivers a complete prediction workflow:
+> Predict vehicle maintenance risk from telemetry data using a tuned Random Forest pipeline, a deterministic insight engine, and an optional Google Gemini layer.
+
+[![Python](https://img.shields.io/badge/Python-3.11-blue)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-green)](https://fastapi.tiangolo.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black)](https://nextjs.org/)
+[![scikit-learn](https://img.shields.io/badge/scikit--learn-1.7-orange)](https://scikit-learn.org/)
+
+---
+
+## Demo
+
+![FleetAI Dashboard](assests/proj.png)
+
+**Live deployment:**
+- Frontend: [https://vehicle-aiml.vercel.app](https://vehicle-aiml.vercel.app)
+- Backend API docs: [https://vehicle-aiml-backend.vercel.app/docs](https://vehicle-aiml-backend.vercel.app/docs)
+
+---
+
+## Model Performance
+
+Trained on the [Vehicle Maintenance Data](https://www.kaggle.com/datasets/chavindudulaj/vehicle-maintenance-data) dataset (50,000 synthetic records, 19 features).
+
+| Metric | Test Set | 5-Fold CV (mean ± std) |
+|---|---|---|
+| Accuracy | **94.07%** | 93.91% ± 0.21% |
+| ROC-AUC | **1.00** | 1.00 ± 0.00 |
+
+> **Note on ROC-AUC:** The perfect score is a known characteristic of this synthetic dataset — the feature distributions are generated with strong separation between classes. Results on real-world fleet data will differ. See `model/data_processing.ipynb` for the full leakage investigation.
+
+**Risk thresholds:**
+
+| Level | Probability |
+|---|---|
+| `LOW` | < 0.30 |
+| `MEDIUM` | 0.30 – 0.69 |
+| `HIGH` | ≥ 0.70 |
+
+To reproduce these numbers:
+
+```bash
+pip install kagglehub scikit-learn pandas joblib
+python model/train.py
+```
+
+Outputs `model/vehicle_maintenance_pipeline.pkl` and `model/metrics.json`.
+
+---
+
+## What Milestone-1 Delivers
 
 - FastAPI backend with sklearn pipeline inference
 - Next.js frontend with manual and CSV prediction flows
 - Risk classification (`LOW | MEDIUM | HIGH`)
-- Confidence and risk probability
+- Confidence score and risk probability
 - Global model feature importance
 - Row-level meaningful insight (drivers, recommendations, warnings)
+
+---
 
 ## System Architecture
 
@@ -17,51 +68,59 @@ frontend (Next.js)  --->  backend (FastAPI /predict)
                            ---> model/vehicle_maintenance_pipeline.pkl
 ```
 
-## What Is "Meaningful Insight" In This Build
+---
 
-Prediction responses now include both model output and an operational explanation:
+## Meaningful Insight
 
-- `risk_probability`: model probability of HIGH-risk class
-- `confidence`: `max(probability, 1 - probability)`
-- `insight_summary`: short interpretation sentence
-- `insight_drivers[]`: row-specific factors with direction (`RISK_UP`, `RISK_DOWN`, `NEUTRAL`) and impact score
-- `recommendations[]`: actionable maintenance steps with priority
-- `data_warnings[]`: suspicious input warnings (for out-of-range telemetry)
-- `insight_source`: `RULES` or `GENAI_LLM`
+Every prediction response includes both model output and an operational explanation:
 
-GenAI path:
+| Field | Description |
+|---|---|
+| `risk_probability` | Model probability of HIGH-risk class |
+| `confidence` | `max(p, 1 - p)` |
+| `insight_summary` | Short interpretation sentence |
+| `insight_drivers[]` | Row-specific factors with direction (`RISK_UP`, `RISK_DOWN`, `NEUTRAL`) and impact score |
+| `recommendations[]` | Actionable maintenance steps with priority |
+| `data_warnings[]` | Warnings for out-of-range telemetry |
+| `insight_source` | `RULES` or `GENAI_LLM` |
 
-- If `ENABLE_LLM_INSIGHTS=true` and `GOOGLE_API_KEY` is set, LangChain + Google GenAI augments summary/recommendations.
-- If not configured, the API safely falls back to deterministic rule-based insights.
+**GenAI path (optional):**
+- Set `ENABLE_LLM_INSIGHTS=true` and `GOOGLE_API_KEY` to augment summaries via LangChain + Google Gemini.
+- Falls back to deterministic rule-based insights if not configured.
+- LangChain is **not** a core dependency — install separately with `pip install -r backend/requirements-llm.txt`.
 
-Important distinction:
-
-- `feature_importance` is **global model weight** (model-wide)
-- `insight_drivers` is **row-specific operational interpretation**
+---
 
 ## Repository Structure
 
 ```text
 backend/
   app/
-    api/predict.py
-    services/prediction_service.py
-    schemas/prediction.py
-    models/prediction_record.py
+    api/predict.py            # /predict endpoint (JSON + CSV)
+    services/
+      prediction_service.py   # ML inference + rule-based insight engine
+      llm_insight_service.py  # Optional GenAI layer (LangChain + Gemini)
+    schemas/prediction.py     # Pydantic request/response models
     main.py
-  tests/
-  requirements.txt
+  tests/                      # pytest suite
+  requirements.txt            # Core deps (no LangChain)
+  requirements-llm.txt        # Optional LLM deps
 frontend/
   src/app/predict/page.tsx
   src/services/predictionService.ts
   src/types/prediction.ts
 model/
+  train.py                    # Reproducible training script
+  data_processing.ipynb       # EDA + model selection notebook
   vehicle_maintenance_pipeline.pkl
+  metrics.json                # Generated by train.py
 api/
-  index.py                 # Vercel backend entrypoint
-vercel.json                # Vercel backend routing
-requirements.txt           # Vercel backend deps
+  index.py                    # Vercel backend entrypoint
+vercel.json
+requirements.txt              # Vercel backend deps (slim)
 ```
+
+---
 
 ## Local Development
 
@@ -84,16 +143,19 @@ echo "NEXT_PUBLIC_API_BASE_URL=http://localhost:8000" > .env.local
 npm run dev
 ```
 
-Open:
+Open `http://localhost:3000/predict`.
 
-- `http://localhost:3000`
-- `http://localhost:3000/predict`
+### Tests
+
+```bash
+PYTHONPATH=backend pytest -q backend/tests
+```
+
+---
 
 ## API Contract
 
-### `POST /predict` (JSON)
-
-Request:
+### `POST /predict` — JSON
 
 ```json
 {
@@ -105,31 +167,29 @@ Request:
 }
 ```
 
-Response shape:
+Response:
 
 ```json
 {
   "risk_level": "LOW",
   "risk_probability": 0.1751,
   "confidence": 0.8249,
-  "feature_importance": {
-    "reported_issues": 0.3051
-  },
-  "insight_summary": "Estimated failure-risk probability is ...",
+  "feature_importance": { "reported_issues": 0.3051 },
+  "insight_summary": "Estimated failure-risk probability is 17.51% (LOW)...",
   "insight_drivers": [
     {
       "factor": "Reported issues",
       "observed_value": "1 active fault code",
       "direction": "RISK_UP",
       "impact": 0.42,
-      "explanation": "..."
+      "explanation": "A single active fault code adds moderate risk."
     }
   ],
   "recommendations": [
     {
       "priority": "MEDIUM",
       "action": "Run full diagnostic scan and resolve active fault codes.",
-      "rationale": "..."
+      "rationale": "Active fault codes are one of the strongest maintenance risk drivers."
     }
   ],
   "data_warnings": [],
@@ -139,85 +199,48 @@ Response shape:
 }
 ```
 
-### `POST /predict` (CSV)
+### `POST /predict` — CSV upload
 
-Multipart field:
+Multipart field `file` (`.csv`). Required columns: `mileage`, `engine_hours`, `fault_codes`, `service_history`, `usage_patterns`.
 
-- `file`: CSV
+Batch response includes `predictions[]` and a top-level summary of the highest-risk row.
 
-Required columns:
+---
 
-- `mileage`
-- `engine_hours`
-- `fault_codes`
-- `service_history`
-- `usage_patterns`
+## Deploy to Vercel
 
-For batch requests, response includes `predictions[]` and a top-level summary of the highest-risk row.
+Use **two separate Vercel projects** from the same repo.
 
-## Risk Thresholds
+### Backend project
 
-- `LOW`: probability `< 0.30`
-- `MEDIUM`: `0.30 <= probability < 0.70`
-- `HIGH`: probability `>= 0.70`
-
-## Tests
-
-```bash
-PYTHONPATH=backend pytest -q backend/tests
-```
-
-## Deploy To Vercel (Frontend + Backend)
-
-Use **two Vercel projects** in the same repo.
-
-### 1) Backend project (FastAPI + model)
-
-- Vercel project root: repository root (`/`)
-- Uses:
-  - `api/index.py`
-  - `vercel.json`
-  - `requirements.txt`
-  - `model/vehicle_maintenance_pipeline.pkl`
-
-Deploy:
+- Root: repository root (`/`)
+- Includes `api/index.py`, `vercel.json`, `requirements.txt`, `model/vehicle_maintenance_pipeline.pkl`
 
 ```bash
 vercel --prod
 ```
 
-Optional GenAI env vars on backend project:
+Optional env vars:
 
-```text
+```
 ENABLE_LLM_INSIGHTS=true
 GOOGLE_API_KEY=<your-key>
 GENAI_MODEL=gemini-1.5-flash
 ```
 
-After deploy, verify:
+Verify: `https://<backend-domain>/health`
 
-- `https://<backend-domain>/health`
-- `https://<backend-domain>/docs`
+### Frontend project
 
-### 2) Frontend project (Next.js)
-
-- Vercel project root: `frontend/`
-- Set env var:
-  - `NEXT_PUBLIC_API_BASE_URL=https://<backend-domain>`
-
-Deploy:
+- Root: `frontend/`
+- Env var: `NEXT_PUBLIC_API_BASE_URL=https://<backend-domain>`
 
 ```bash
-cd frontend
-vercel --prod
+cd frontend && vercel --prod
 ```
 
-### Why this setup
+---
 
-- Backend project must include `model/vehicle_maintenance_pipeline.pkl` from repo root.
-- Frontend project remains a standard Next.js deployment and calls backend via env-configured URL.
+## Team
 
-## Notes
-
-- Model is loaded once per runtime instance via cached prediction service.
-- Feature importance is global model behavior; row-level interpretation is in `insight_drivers`.
+**DataRiders** — Harsh Hirawat, Nitya Jain, Atharv Soni, Ishita Singh
