@@ -23,6 +23,15 @@ from app.schemas.prediction import (
 
 
 class PredictionService:
+    """Core ML inference and insight engine for vehicle maintenance prediction.
+
+    Loads the trained sklearn pipeline once at construction time and exposes
+    ``predict_single`` / ``predict_many`` for JSON and CSV workflows.  Every
+    prediction is enriched with rule-based insight drivers, prioritised
+    recommendations, and optional data-quality warnings.  When
+    ``ENABLE_LLM_INSIGHTS=true`` the summary and recommendations are further
+    augmented by :class:`LLMInsightService`.
+    """
     _REQUIRED_MINIMUM_FIELDS = {
         "mileage",
         "engine_hours",
@@ -54,6 +63,12 @@ class PredictionService:
     ]
 
     def __init__(self, model_path: Path | None = None) -> None:
+        """Load and validate the sklearn pipeline from *model_path*.
+
+        Falls back to the path resolved by :class:`~app.config.Settings` when
+        *model_path* is ``None``.  Raises ``RuntimeError`` if the file is
+        missing or the artifact is not an sklearn ``Pipeline``.
+        """
         self.model_path = model_path or settings.model_path
         if not self.model_path.exists():
             raise RuntimeError(f"Trained model file not found at: {self.model_path}")
@@ -76,6 +91,12 @@ class PredictionService:
             self.llm_insight_service = None
 
     async def parse_csv_upload(self, file: UploadFile) -> list[dict[str, Any]]:
+        """Read and validate a multipart CSV upload.
+
+        Returns a list of normalised payload dicts ready for ``predict_many``.
+        Raises ``HTTPException`` (400) for missing filename, non-CSV files,
+        empty uploads, or unparseable content.
+        """
         if not file.filename:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing CSV filename.")
         if not file.filename.lower().endswith(".csv"):
@@ -100,6 +121,12 @@ class PredictionService:
         return [self._normalize_payload(record) for record in records]
 
     def predict_single(self, payload: dict[str, Any]) -> PredictionResponse:
+        """Run inference on a single vehicle payload dict.
+
+        Normalises the payload, builds the full model row with derived
+        defaults, runs ``predict_proba``, and returns a :class:`PredictionResponse`
+        enriched with insight drivers and recommendations.
+        """
         normalized = self._normalize_payload(payload)
         row = self._build_model_row(normalized)
 
@@ -118,6 +145,12 @@ class PredictionService:
         )
 
     def predict_many(self, payloads: Iterable[dict[str, Any]]) -> PredictionResponse:
+        """Run batch inference over an iterable of vehicle payload dicts.
+
+        Returns a :class:`PredictionResponse` whose top-level fields summarise
+        the highest-risk row and whose ``predictions`` list contains one
+        :class:`PredictionItem` per input row.
+        """
         normalized_payloads = [self._normalize_payload(item) for item in payloads]
         if not normalized_payloads:
             raise HTTPException(
@@ -161,6 +194,7 @@ class PredictionService:
         )
 
     def _build_prediction_item(self, *, row: dict[str, Any], probability: float) -> PredictionItem:
+        """Construct a fully-enriched :class:`PredictionItem` for one row."""
         risk_level = self._map_risk_level(probability)
         insight = self._generate_insight_bundle(row=row, probability=probability, risk_level=risk_level)
         insight_source = "RULES"
@@ -199,10 +233,12 @@ class PredictionService:
 
     @staticmethod
     def _risk_rank(risk_level: str) -> int:
+        """Map risk level string to an integer for comparison (LOW=0, HIGH=2)."""
         return {"LOW": 0, "MEDIUM": 1, "HIGH": 2}[risk_level]
 
     @staticmethod
     def _map_risk_level(probability: float) -> str:
+        """Classify a probability into LOW / MEDIUM / HIGH using fixed thresholds."""
         if probability < 0.3:
             return "LOW"
         if probability < 0.7:
@@ -211,9 +247,16 @@ class PredictionService:
 
     @staticmethod
     def _confidence(probability: float) -> float:
+        """Return max(p, 1-p) as the model confidence score."""
         return max(probability, 1.0 - probability)
 
     def _build_model_row(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Map a normalised payload dict to the full 19-column model input row.
+
+        Missing optional fields are filled with heuristic defaults derived from
+        the five required minimum fields.  Raises ``HTTPException`` (422) when
+        neither the minimum fields nor model-compatible fields are present.
+        """
         has_minimum = all(field in payload and payload[field] not in (None, "") for field in self._REQUIRED_MINIMUM_FIELDS)
         has_model_fields = any(self._normalize_key(column) in payload for column in self.required_columns)
         if not (has_minimum or has_model_fields):
@@ -333,6 +376,7 @@ class PredictionService:
 
     @staticmethod
     def _derive_days_since_service(service_score: float, usage_band: str) -> float:
+        """Estimate days since last service from service score and usage band."""
         if service_score >= 8:
             return 45.0 if usage_band == "heavy" else 30.0
         if service_score >= 5:
@@ -343,6 +387,7 @@ class PredictionService:
 
     @staticmethod
     def _derive_fuel_efficiency(engine_size: float, usage_band: str) -> float:
+        """Estimate fuel efficiency (km/L) from engine size and usage band."""
         base = 32.0 - (engine_size - 1.5) * 4.0
         if usage_band == "heavy":
             base -= 4.0
@@ -352,6 +397,7 @@ class PredictionService:
 
     @staticmethod
     def _derive_insurance_premium(vehicle_age: float, accident_history: float, usage_band: str) -> float:
+        """Estimate insurance premium from vehicle age, accident history, and usage."""
         premium = 650.0 + vehicle_age * 35.0 + accident_history * 180.0
         if usage_band == "heavy":
             premium += 220.0
@@ -364,6 +410,7 @@ class PredictionService:
         days_since_service: float,
         usage_band: str,
     ) -> str:
+        """Score component wear and return 'New', 'Good', or 'Worn Out'."""
         score = 0
         if mileage >= 150000:
             score += 2
@@ -388,6 +435,7 @@ class PredictionService:
 
     @staticmethod
     def _normalize_tire_or_brake(value: str) -> str:
+        """Normalise free-text tire/brake condition to 'New', 'Good', or 'Worn Out'."""
         normalized = value.strip().lower()
         if normalized in {"worn", "worn out", "poor", "bad"}:
             return "Worn Out"
@@ -397,6 +445,7 @@ class PredictionService:
 
     @staticmethod
     def _normalize_battery_status(value: str) -> str:
+        """Normalise free-text battery status to 'New', 'Good', or 'Weak'."""
         normalized = value.strip().lower()
         if normalized in {"weak", "low", "degraded", "poor"}:
             return "Weak"
@@ -406,6 +455,7 @@ class PredictionService:
 
     @staticmethod
     def _derive_service_history_score(value: Any) -> float:
+        """Convert a raw service history value (numeric or text) to a 0–12 score."""
         if value is None:
             return 5.0
         number = PredictionService._to_float(value, default=np.nan, min_value=0.0)
@@ -423,6 +473,7 @@ class PredictionService:
 
     @staticmethod
     def _derive_maintenance_history_category(value: Any) -> str:
+        """Convert a raw maintenance history value to 'Good', 'Average', or 'Poor'."""
         if value is None:
             return "Average"
 
@@ -437,6 +488,7 @@ class PredictionService:
 
     @staticmethod
     def _normalize_maintenance_category(value: str) -> str:
+        """Normalise free-text maintenance category to 'Good', 'Average', or 'Poor'."""
         normalized = value.strip().lower()
         if normalized in {"good", "excellent", "regular", "consistent"}:
             return "Good"
@@ -446,6 +498,7 @@ class PredictionService:
 
     @staticmethod
     def _classify_usage(usage_pattern: str) -> str:
+        """Classify a free-text usage pattern into 'heavy', 'moderate', or 'light'."""
         text = usage_pattern.lower()
         heavy_tokens = {"heavy", "commercial", "longhaul", "aggressive", "city", "high"}
         moderate_tokens = {"moderate", "mixed", "normal", "daily"}
@@ -457,6 +510,7 @@ class PredictionService:
 
     @staticmethod
     def _extract_fault_code_count(value: Any) -> float:
+        """Count the number of fault codes from a string, list, or numeric value."""
         if value is None:
             return 0.0
         if isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -478,6 +532,7 @@ class PredictionService:
         min_value: float | None = None,
         max_value: float | None = None,
     ) -> float:
+        """Safely cast *value* to float, applying optional min/max clamps."""
         number = default
         try:
             if value not in (None, ""):
@@ -493,6 +548,7 @@ class PredictionService:
 
     @staticmethod
     def _normalize_key(key: str) -> str:
+        """Convert a column name to lowercase snake_case for payload lookup."""
         return re.sub(r"[^a-z0-9]+", "_", key.strip().lower()).strip("_")
 
     def _generate_insight_bundle(
@@ -502,6 +558,7 @@ class PredictionService:
         probability: float,
         risk_level: str,
     ) -> dict[str, Any]:
+        """Build the full insight bundle (drivers, recommendations, warnings, summary)."""
         mileage = float(row.get("Mileage", 0.0))
         issues = float(row.get("Reported_Issues", 0.0))
         service_score = float(row.get("Service_History", 0.0))
@@ -789,6 +846,7 @@ class PredictionService:
         engine_hours: float,
         reported_issues: float,
     ) -> list[str]:
+        """Return a list of data-quality warning strings for out-of-range inputs."""
         warnings: list[str] = []
         if mileage > 1_500_000:
             warnings.append(
@@ -809,6 +867,7 @@ class PredictionService:
         drivers: list[InsightDriver],
         risk_level: str,
     ) -> list[RecommendationItem]:
+        """Generate up to 5 deduplicated maintenance recommendations from insight drivers."""
         recommendations: list[RecommendationItem] = []
         for driver in drivers:
             factor = driver.factor.lower()
@@ -880,6 +939,7 @@ class PredictionService:
         llm_recommendations: list[dict[str, str]],
         risk_level: str,
     ) -> list[RecommendationItem]:
+        """Prepend LLM recommendations to the rule-based list, deduplicating by action text."""
         merged = list(existing)
         default_priority = "HIGH" if risk_level == "HIGH" else "MEDIUM"
         if risk_level == "LOW":
@@ -916,6 +976,7 @@ class PredictionService:
         risk_level: str,
         drivers: list[InsightDriver],
     ) -> str:
+        """Compose a one-sentence insight summary from probability and top drivers."""
         top_risk = [driver.factor for driver in drivers if driver.direction == "RISK_UP"][:2]
         top_protective = [driver.factor for driver in drivers if driver.direction == "RISK_DOWN"][:2]
 
@@ -932,6 +993,7 @@ class PredictionService:
         return risk_text
 
     def _normalize_payload(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Snake-case all keys and validate through :class:`VehicleInput`, dropping None values."""
         normalized: dict[str, Any] = {}
         for key, value in payload.items():
             normalized[self._normalize_key(str(key))] = value
@@ -945,12 +1007,19 @@ class PredictionService:
 
     @staticmethod
     def _pick(payload: dict[str, Any], *keys: str) -> Any:
+        """Return the first non-empty value found in *payload* for the given *keys*."""
         for key in keys:
             if key in payload and payload[key] not in (None, ""):
                 return payload[key]
         return None
 
     def _extract_feature_importance(self) -> dict[str, float]:
+        """Extract and normalise global feature importances from the pipeline.
+
+        Groups one-hot-encoded categorical sub-features back to their original
+        column name and returns the top-10 features as a normalised dict.
+        Returns an empty dict if the pipeline structure is unexpected.
+        """
         model = self.pipeline.named_steps.get("model")
         preprocessor = self.pipeline.named_steps.get("preprocessor")
         if model is None or preprocessor is None:
@@ -986,6 +1055,7 @@ class PredictionService:
 
     @staticmethod
     def _categorical_feature_names(preprocessor: Any) -> list[str]:
+        """Return the list of categorical feature names from the ColumnTransformer."""
         transformers = getattr(preprocessor, "transformers_", None)
         if not transformers:
             return []
@@ -996,6 +1066,7 @@ class PredictionService:
 
     @staticmethod
     def _expanded_feature_names(preprocessor: Any) -> list[str]:
+        """Return the full list of feature names after one-hot encoding."""
         transformers = getattr(preprocessor, "transformers_", None)
         if not transformers:
             return []
@@ -1017,6 +1088,7 @@ class PredictionService:
 
     @staticmethod
     def _base_feature_name(expanded_name: str, categorical_features: list[str]) -> str:
+        """Map an OHE-expanded feature name back to its original column name."""
         for feature in categorical_features:
             prefix = f"{feature}_"
             if expanded_name.startswith(prefix):
@@ -1026,4 +1098,5 @@ class PredictionService:
 
 @lru_cache(maxsize=1)
 def get_prediction_service() -> PredictionService:
+    """Return the singleton :class:`PredictionService`, loading the model on first call."""
     return PredictionService()
