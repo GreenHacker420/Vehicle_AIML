@@ -3,6 +3,12 @@
 __pycache__/
 *.py[cod]
 
+# Model artifacts — use Git LFS or external storage for large binaries
+*.pkl
+*.h5
+*.joblib
+model/metrics.json
+
 backend/.venv/
 backend/.env
 
