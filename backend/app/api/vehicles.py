@@ -12,6 +12,7 @@ _counter = 0
 
 @router.post("", response_model=VehicleResponse, status_code=status.HTTP_201_CREATED)
 def create_vehicle(payload: VehicleCreate) -> VehicleResponse:
+    """Create a new vehicle record and return it with an assigned id."""
     global _counter
     _counter += 1
 
@@ -30,11 +31,13 @@ def create_vehicle(payload: VehicleCreate) -> VehicleResponse:
 
 @router.get("", response_model=list[VehicleResponse])
 def list_vehicles() -> list[VehicleResponse]:
+    """Return all vehicle records in the in-memory store."""
     return [VehicleResponse(**v) for v in _store]
 
 
 @router.get("/{vehicle_id}", response_model=VehicleResponse)
 def get_vehicle(vehicle_id: int) -> VehicleResponse:
+    """Return a single vehicle by id, or 404 if not found."""
     for vehicle in _store:
         if vehicle["id"] == vehicle_id:
             return VehicleResponse(**vehicle)
