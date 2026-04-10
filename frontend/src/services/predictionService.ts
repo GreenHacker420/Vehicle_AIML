@@ -14,11 +14,15 @@ export type {
 const NETWORK_ERROR_MESSAGE =
   "Unable to reach prediction API. Check your connection or backend status.";
 
+/**
+ * Resolve the backend base URL.
+ * Priority: NEXT_PUBLIC_API_BASE_URL env var → localhost fallback for dev.
+ * The hardcoded production URL has been removed; set the env var in Vercel
+ * dashboard or .env.local instead.
+ */
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ??
-  (typeof window !== "undefined" && window.location.hostname !== "localhost"
-    ? "https://vehicle-aiml-backend.vercel.app"
-    : "http://localhost:8000");
+  "http://localhost:8000";
 
 async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
