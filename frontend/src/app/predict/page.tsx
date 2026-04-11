@@ -48,6 +48,10 @@ import type {
   RecommendationItem,
 } from "@/types/prediction";
 import { cn } from "@/lib/utils";
+import { toSortedFeatureImportance } from "@/lib/sortFeatureImportance";
+import { validationMessages } from "@/lib/validationMessages";
+import { toSortedFeatureImportance } from "@/lib/sortFeatureImportance";
+import { validationMessages } from "@/lib/validationMessages";
 
 type ManualFormState = {
   mileage: string;
@@ -126,12 +130,7 @@ export default function PredictPage() {
     if (!result?.feature_importance) {
       return [];
     }
-    return Object.entries(result.feature_importance)
-      .map(([feature, importance]) => ({
-        feature,
-        importance,
-      }))
-      .sort((a, b) => b.importance - a.importance);
+    return toSortedFeatureImportance(result.feature_importance);
   }, [result]);
 
   const batchRows: PredictionItem[] = useMemo(() => {
@@ -197,9 +196,14 @@ export default function PredictPage() {
       payload.usage_patterns.length === 0;
 
     if (hasInvalidValue) {
-      setErrorMessage(
-        "Please complete all manual input fields before predicting.",
-      );
+      const missing = [
+        Number.isNaN(payload.mileage) ? validationMessages.mileage : "",
+        Number.isNaN(payload.engine_hours) ? validationMessages.engine_hours : "",
+        payload.fault_codes.length === 0 ? validationMessages.fault_codes : "",
+        payload.service_history.length === 0 ? validationMessages.service_history : "",
+        payload.usage_patterns.length === 0 ? validationMessages.usage_patterns : "",
+      ].filter(Boolean);
+      setErrorMessage(missing[0] ?? "Please complete all manual input fields before predicting.");
       return;
     }
 
@@ -682,7 +686,7 @@ export default function PredictPage() {
                               <TableCell className="text-center text-slate-500 py-6">No features returned.</TableCell>
                             </TableRow>
                           )}
-                          {featureRows.map(({ feature, importance }) => (
+                          {featureRows.map(({ feature, value }) => (
                             <TableRow key={feature} className="border-b border-white/20 hover:bg-white/40">
                               <TableCell className="capitalize text-sm font-medium text-slate-800 px-6 py-3">
                                 {feature.replace(/_/g, " ")}
@@ -692,11 +696,11 @@ export default function PredictPage() {
                                   <div className="h-1.5 w-16 overflow-hidden rounded-full bg-slate-200/50 shadow-inner">
                                     <div
                                       className="h-full bg-cyan-500 rounded-full"
-                                      style={{ width: `${importance * 100}%` }}
+                                      style={{ width: `${value * 100}%` }}
                                     />
                                   </div>
                                   <span className="text-xs font-mono font-medium text-slate-700 w-10 text-right">
-                                    {(importance * 100).toFixed(1)}%
+                                    {(value * 100).toFixed(1)}%
                                   </span>
                                 </div>
                               </TableCell>
