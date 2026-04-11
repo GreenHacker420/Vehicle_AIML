@@ -500,8 +500,8 @@ class PredictionService:
     def _classify_usage(usage_pattern: str) -> str:
         """Classify a free-text usage pattern into 'heavy', 'moderate', or 'light'."""
         text = usage_pattern.lower()
-        heavy_tokens = {"heavy", "commercial", "longhaul", "aggressive", "city", "high"}
-        moderate_tokens = {"moderate", "mixed", "normal", "daily"}
+        heavy_tokens = {"heavy", "commercial", "longhaul", "aggressive", "high"}
+        moderate_tokens = {"moderate", "mixed", "normal", "daily", "city"}
         if any(token in text for token in heavy_tokens):
             return "heavy"
         if any(token in text for token in moderate_tokens):
