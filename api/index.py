@@ -14,4 +14,9 @@ for p in [str(BACKEND_DIR), str(CWD_BACKEND), str(ROOT_DIR), os.getcwd()]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from app.main import app  # noqa: E402
+try:
+    from app.main import app  # noqa: E402
+except Exception:
+    import traceback
+    traceback.print_exc()
+    raise
