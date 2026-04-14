@@ -14,9 +14,7 @@ for p in [str(BACKEND_DIR), str(CWD_BACKEND), str(ROOT_DIR), os.getcwd()]:
     if p not in sys.path:
         sys.path.insert(0, p)
 
-try:
-    from app.main import app  # noqa: E402
-except Exception:
-    import traceback
-    traceback.print_exc()
-    raise
+from app.main import app  # noqa: E402
+
+# Vercel requires a top-level name: re-export as 'application' as well
+application = app
