@@ -50,8 +50,6 @@ import type {
 import { cn } from "@/lib/utils";
 import { toSortedFeatureImportance } from "@/lib/sortFeatureImportance";
 import { validationMessages } from "@/lib/validationMessages";
-import { toSortedFeatureImportance } from "@/lib/sortFeatureImportance";
-import { validationMessages } from "@/lib/validationMessages";
 
 type ManualFormState = {
   mileage: string;
