@@ -162,9 +162,9 @@ Every model was configured with balanced class weights so that the minority clas
 
 \subsection{Training and Validation}
 
-We split the 50,000 records into 80\% for training (40,000 records) and 20\% for testing (10,000 records) using stratified sampling to keep the class proportions consistent. Model selection was based on 5 fold stratified cross validation with ROC AUC as the primary metric.
+We split the 50,000 records into 80\% for training (40,000 records) and 20\% for testing (10,000 records) using stratified sampling to keep the class proportions consistent. Model selection was based on 5-fold stratified cross-validation with $\text{ROC-AUC}$ as the primary metric.
 
-After selecting Random Forest as the best candidate, we fine tuned its hyperparameters using \texttt{GridSearchCV}. The search covered tree depth, minimum samples per split, minimum samples per leaf, and the number of estimators.
+After selecting Random Forest as the best candidate, we fine-tuned its hyperparameters using \texttt{GridSearchCV} over the following grid: \texttt{n\_estimators} $\in \{50, 100\}$, \texttt{max\_depth} $\in \{6, 8, 10, \text{None}\}$, \texttt{min\_samples\_split} $\in \{2, 5\}$, and \texttt{min\_samples\_leaf} $\in \{1, 5, 10\}$. The best configuration found was \texttt{n\_estimators}=100, \texttt{max\_depth}=8, \texttt{min\_samples\_split}=5, and \texttt{min\_samples\_leaf}=10, with \texttt{class\_weight=``balanced''} throughout.
 
 % ============================= RESULTS ============================
 \section{Results}
@@ -209,17 +209,19 @@ Gradient Boosting & \textbf{0.806} & \textbf{0.827} & \textbf{0.738} \\
 
 The contrast between these two tables is striking. On the full set, three of the four models achieve perfect or near perfect scores, which is a clear red flag for data leakage. On the realistic set, accuracy drops to the 70 to 80 percent range, which is a more honest reflection of the actual predictive signal in the data.
 
-We also ran 5 fold stratified cross validation on the full feature set. Logistic Regression achieved a mean ROC AUC of $0.9871 \pm 0.0005$, while the other three models all scored $1.0000 \pm 0.0000$.
+We also ran 5-fold stratified cross-validation on the full feature set. Logistic Regression achieved a mean $\text{ROC-AUC}$ of $0.9871 \pm 0.0005$, while the other three models all scored $1.0000 \pm 0.0000$.
 
-After tuning Random Forest with \texttt{GridSearchCV} (\texttt{max\_depth}=8, \texttt{min\_samples\_leaf}=10, \texttt{min\_samples\_split}=5, \texttt{n\_estimators}=100), we obtained the following metrics on the held out test set:
+After tuning Random Forest with \texttt{GridSearchCV} (\texttt{n\_estimators}=100, \texttt{max\_depth}=8, \texttt{min\_samples\_leaf}=10, \texttt{min\_samples\_split}=5, \texttt{class\_weight}=``balanced''), we obtained the following metrics on the held-out test set:
 
 \begin{itemize}
-    \item Accuracy: 0.9407
-    \item ROC AUC: 1.0000
-    \item Weighted F1: 0.9436
-    \item Precision for the ``No Maintenance'' class: 0.76 with Recall: 1.00
-    \item Precision for the ``Needs Maintenance'' class: 1.00 with Recall: 0.93
+    \item Accuracy: $0.9407$
+    \item $\text{ROC-AUC} = 1.0000$
+    \item Weighted $\text{F1} = 0.9436$
+    \item Precision for the ``No Maintenance'' class: $0.76$, Recall: $1.00$
+    \item Precision for the ``Needs Maintenance'' class: $1.00$, Recall: $0.93$
 \end{itemize}
+
+Five-fold stratified cross-validation on the full dataset yielded $\text{CV Accuracy} = 0.9391 \pm 0.0021$ and $\text{CV ROC-AUC} = 1.0000 \pm 0.0000$. These metrics are reproducible by running \texttt{model/train.py} and are also exposed at runtime via the \texttt{GET /metrics} endpoint.
 
 \subsection{Model Evaluation Plots}
 
@@ -371,9 +373,9 @@ The frontend communicates with the backend through a TypeScript service module t
 
 \subsection{ML Pipeline}
 
-The trained model is saved as a single scikit learn \texttt{Pipeline} object in a pickle file. This pipeline contains two steps: a \texttt{ColumnTransformer} that applies \texttt{StandardScaler} to the 11 numerical features and \texttt{OneHotEncoder} to the 8 categorical features, followed by a tuned \texttt{RandomForestClassifier} with \texttt{max\_depth}=8, \texttt{min\_samples\_leaf}=10, \texttt{min\_samples\_split}=5, \texttt{n\_estimators}=100, and balanced class weights.
+The trained model is saved as a single scikit-learn \texttt{Pipeline} object in a pickle file. This pipeline contains two steps: a \texttt{ColumnTransformer} that applies \texttt{StandardScaler} to the 11 numerical features and \texttt{OneHotEncoder} to the 8 categorical features, followed by a tuned \texttt{RandomForestClassifier} with \texttt{n\_estimators}=100, \texttt{max\_depth}=8, \texttt{min\_samples\_leaf}=10, \texttt{min\_samples\_split}=5, and \texttt{class\_weight=``balanced''}.
 
-Bundling preprocessing and prediction into a single serialized object means there is no risk of preprocessing mismatch between training and serving. The notebook \texttt{model/data\_processing.ipynb} contains the complete workflow from data exploration through model training and evaluation to plot generation.
+Bundling preprocessing and prediction into a single serialized object means there is no risk of preprocessing mismatch between training and serving. The training workflow is fully reproducible via \texttt{model/train.py}, which loads the raw dataset through \texttt{kagglehub}, performs the train/test split, runs \texttt{GridSearchCV}, evaluates on the held-out set, runs 5-fold cross-validation, saves the pipeline to \texttt{vehicle\_maintenance\_pipeline.pkl}, and writes all metrics to \texttt{metrics.json}. The notebook \texttt{model/data\_processing.ipynb} contains the complete exploratory workflow from data analysis through model selection to plot generation.
 
 % ============================= DISCUSSION =========================
 \section{Discussion}
@@ -433,12 +435,13 @@ The backend comes with a comprehensive pytest test suite consisting of seven tes
 \toprule
 Test File & Coverage Area \\
 \midrule
-\texttt{test\_health.py} & Health endpoint verification \\
+\texttt{test\_health.py} & Health and metrics endpoint verification \\
 \texttt{test\_predict.py} & Single record JSON prediction \\
 \texttt{test\_predict\_contract.py} & Response schema contract checks \\
-\texttt{test\_batch\_predict.py} & CSV and multi record batch prediction \\
+\texttt{test\_batch\_predict.py} & CSV and multi-record batch prediction \\
 \texttt{test\_validation.py} & Input validation and error handling \\
 \texttt{test\_risk\_mapping.py} & Risk threshold boundary testing \\
+\texttt{test\_model\_performance.py} & Model accuracy $\geq 0.80$ and $\text{ROC-AUC} \geq 0.85$ baseline \\
 \texttt{test\_vehicles.py} & Vehicle CRUD operations \\
 \bottomrule
 \end{tabular}
@@ -452,6 +455,24 @@ PYTHONPATH=backend pytest -q backend/tests
 
 % ============================= API CONTRACT =======================
 \section{API Contract}
+
+\subsection{GET /metrics}
+
+Returns the model evaluation metrics generated by \texttt{model/train.py} as a JSON object:
+
+\begin{lstlisting}
+{
+  "accuracy": 0.9407,
+  "roc_auc": 1.0,
+  "cv_folds": 5,
+  "cv_accuracy_mean": 0.9391,
+  "cv_accuracy_std": 0.0021,
+  "cv_roc_auc_mean": 1.0,
+  "cv_roc_auc_std": 0.0
+}
+\end{lstlisting}
+
+Returns HTTP 404 with a guidance message if \texttt{train.py} has not been run yet.
 
 \subsection{POST /predict (JSON)}
 
@@ -625,6 +646,7 @@ Vehicle_AIML/
 |   |   |-- test_vehicles.py
 |   |   |-- test_health.py
 |   |   |-- test_risk_mapping.py
+|   |   |-- test_model_performance.py
 |   |   `-- fixtures/
 |   |       |-- valid_sample.csv
 |   |       `-- invalid_rows.csv
@@ -656,8 +678,10 @@ Vehicle_AIML/
 |   |-- tsconfig.json
 |   `-- vercel.json
 |-- model/
+|   |-- train.py              # Reproducible training script
 |   |-- data_processing.ipynb
 |   |-- vehicle_maintenance_pipeline.pkl
+|   |-- metrics.json          # Generated by train.py
 |   |-- confusion_matrix.png
 |   |-- roc_curve.png
 |   |-- feature_importance.png
@@ -702,6 +726,7 @@ Hosting & Vercel (Serverless) & N/A \\
 
 \subsection{Backend Dependencies}
 
+Core runtime (\texttt{requirements.txt}):
 \begin{lstlisting}
 fastapi==0.115.8
 uvicorn[standard]==0.34.0
@@ -712,10 +737,19 @@ python-multipart==0.0.12
 piccolo[postgres]==1.24.2
 pydantic==2.10.6
 pydantic-settings==2.7.1
+\end{lstlisting}
+
+Optional GenAI layer (\texttt{requirements-llm.txt}):
+\begin{lstlisting}
 langchain==0.3.27
 langchain-google-genai==2.1.8
+\end{lstlisting}
+
+Development and testing (\texttt{requirements-dev.txt}):
+\begin{lstlisting}
 pytest==8.3.4
 httpx==0.28.1
+numpy
 \end{lstlisting}
 
 \subsection{Local Development Setup}
